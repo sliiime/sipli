@@ -15,6 +15,14 @@ parse_input input = case x of
                     where x = words input
 
 
+print_tokens::Either [Token] LexError -> IO ()
+print_tokens (Left (t:ts)) = do
+                                print t
+                                print_tokens (Left ts)
+
+print_tokens (Right err) = print err
+print_tokens (Left []) = print '\n'
+
 execute_cmd::Cmd->Context->IO Context
 execute_cmd (Filename filename) ctx = do
                                     putStrLn filename
@@ -26,7 +34,8 @@ execute_cmd (Filename filename) ctx = do
                                     else do
                                       handle <- openFile filename ReadMode
                                       contents  <- hGetContents handle
-                                      let tokens = tokenize 0 0 contents
+                                      let tokens = tokenize contents 0 0 
+                                      print_tokens tokens
                                       putStrLn contents
                                       return ctx
 
