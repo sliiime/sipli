@@ -1,7 +1,7 @@
 module Lexer
 ( 
-  Token,
-  Symbol,
+  Token(..),
+  Symbol(..),
   LexError,
   tokenize
 ) where 
