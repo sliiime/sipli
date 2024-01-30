@@ -4,15 +4,32 @@ module Parser (
 import Lexer
 
 -- Program -> Rule_list 
--- Rule_list -> Rule Rule_list | ε
--- Rule -> Pred Pred_definition
--- Pred -> Identifier '(' Term:wq ')'  
--- Term -> Identifier Parameter_list
--- Parameter_list -> '(' Term Parameter_tail ')' | ε
--- Parameter_tail -> ',' Term Parameter_tail | ε
+-- Rule_list -> Rule Rule_list |First = {Identifier} => First+ = {Identifier}
+--              ε              |Follow = {EOF}       => First+ = {EOF}
+-- Rule -> Pred Lpred_tail 
+-- Lpred_tail -> .               |First = {'.'}  => First+ = {'.'}
+--               Pred_definition |First = {':-'} => First+ = {':-'}
+--               
+-- Pred -> Identifier '(' Term_list_1+ ')'  
+-- Term_list_1+ -> Term Term_list_tail
+-- Term_list_tail -> ',' Term Term_list_tail |First = {','}  => First+ = {','}
+--                    ε                      |Follow = {')'} => First+ = {')'} 
+--
+-- Term -> Identifier Parameter_list |First = {Identifier} => First+ = {Identifier}
+--         Number                    |First = {Number}     => First+ = {Number}
+--
+-- Parameter_list -> '(' Term Parameter_list_tail ')' |First = {'('}      => First+ = {'('}
+--                    ε                               |Follow = {',',')'} => First+ = {',',')'} 
+--
+-- Parameter_list_tail -> ',' Term Parameter_list_tail |First = {','}  => First+ = {','}
+--                         ε                           |Follow = {')'} => First+ = {')'}
+--
 -- Pred_definition -> ':-' Pred_list '.'  
--- Pred_list -> Pred Pred_tail | ε
--- Pred_tail -> , Pred Pred_tail | ε
+-- Pred_list -> Pred Pred_list_tail |First = {Identifier} => First+ = {Identifier}
+--              ε                   |Follow = {'.'}       => First+ = {'.'}
+--
+-- Pred_list_tail -> ',' Pred Pred_tail |First = {','}  => First+ = {','} 
+--                    ε                 |Follow = {'.'} => First+ = {'.'}
 
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
