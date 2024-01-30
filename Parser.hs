@@ -34,41 +34,61 @@ import Lexer
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
 data ParseErr = Error String 
-data ASTNode = Fact String [ASTNode] | LPred String [ASTNode] | RPred String [ASTNode] | VarId String     
+data AbastractSyntaxTree = Root ASTNode | Empty
+data ASTNode = Program [ASTNode] | Rule String [ASTNode] [ASTNode] | RPred String [ASTNode] | TermVar String | TermNum Int
 
-unwr::Either ([Token], ASTNode) ParseErr -> Either [Token] ParseErr
-unwr (Left (tokens, _)) = Left tokens
-unwr (Right err)        = Right err
+add_node::ASTNode -> Either ([Token], [ASTNode]) ParseErr -> Either ([Token], [ASTNode]) ParseErr
+add_node node lr = case lr of 
+                      Left (tokens, nodes) -> Left (tokens, node:nodes)
+                      Right err            -> Right err
 
-parse_term::Either [Token] ParseErr -> Either ([Token], [ASTNode]) ParseErr
-parse_term (Right err) = Right err
-parse_term (Left (StringPL pred_id):LPAREN:tokens) = 
-parse_term (Left (StringPL term_id):tokens) = 
+repeat_until::([Token] -> Either ([Token], ASTNode) ParseErr) -> [Token] -> ([Token]->Bool) -> Either ([Token], [ASTNode]) ParseErr
+repeat_until parser tokens cond = case parser tokens of
+                                  Left (tokens_1, node) -> add_node node (repeat_until parser tokens_1 cond)
+                                  Right err             -> Right err
 
-add_term::Either ASTNode ParseErr -> Either ([Token], [ASTNode]) ParseErr -> Either ([Token], [ASTNode]) ParseErr
-add_term (Right err) _ = Right err
-add_term _  (Right err) = Right err
-add_term (Left node) (Left (rest, nodes)) = Left (rest, node:nodes)
+parse_program::[Token] -> Either ([Token], ASTNode) ParseErr
+parse_program tokens = case parse_rule_list tokens of 
+                          Left ([], rules) -> Left ([], Program rules) 
+                          _                -> Right (Error "Undefined token sequence") 
 
-parse_terms_star::Either [Token] ParseErr -> Either ([Token], [ASTNode]) ParseErr
-parse_terms_star (Right err) = Right err
-parse_terms_star (Left LPAREN:rest) = Left (LPAREN:rest, [])
-parse_terms_star (Left tokens) = case parse_term tokens of 
-                                  Left (rest, term) -> add_term term parse_terms_star rest
-                                  Right err -> Right err
+parse_rule_list::[Token] -> Either ([Token], [ASTNode]) ParseErr
+parse_rule_list tokens = repeat_until parse_rule tokens null 
 
-parse_terms_plus::Either [Token] ParseErr -> Either ([Token], [ASTNode]) ParseErr                                   
-parse_terms_plus (Right err) = Right err
-parse_terms_plus (Left tokens) = parse
+parse_rule::[Token]->Either ([Token], ASTNode) ParseErr
+parse_rule tokens = parse_pred tokens
 
-parse_statement::Either [Token] ParseErr -> Either ([Token], ASTNode) ParseErr
-parse_statement (Right err) = Right err 
-parse_statement (Left ((StringPL rule_id) : (Sym LPAREN) : rest)) = case construct_statement rule_id terms preds of 
-                                                                      Right err -> Right err
-                                                                      Left (tokens, node) -> Left (tokens, node)
-                                                                   where 
-                                                                        terms = parse_terms_plus (Left rest)
-                                                                        preds = parse_predicates (unwr terms)
-parse_statement _ = Right (Error "Invalid token sequence")
+parse_pred::[Token]->Either ([Token], ASTNode) ParseErr
+parse_pred tokens = case tokens of 
+                      (StringPL id):(Sym LPAREN):ts -> parse_term_list ts
+                      _                             -> Right (Error "Undefined token sequence")
 
+parse_term_list::[Token]->Either ([Token], [ASTNode]) ParseErr
+parse_term_list tokens = case parse_term tokens of 
+                            Left (tokens_1, node) -> add_node node (parse_term_list_tail tokens_1)
+                            Right err             -> Right err
+
+parse_term::[Token]->Either ([Token], ASTNode) ParseErr
+parse_term tokens = case tokens of 
+                      (StringPL id):ts -> parse_parameter_list ts
+                      (Number num):ts  -> Left (ts, TermNum num)
+                      _                -> Right (Error "Undefined token sequence")
+                      
+
+parse_parameter_list::[Token]->Either ([Token], [ASTNode]) ParseErr
+parse_parameter_list tokens = case tokens of 
+                                (Sym LPAREN):ts -> parse_term ts 
+                                (Sym COMMA):ts  -> Left (tokens, [])
+                                (Sym RPAREN):ts -> Left (tokens, []) 
+                                _               -> Right (Error "Undefined token sequence")
+
+parse_parameter_list_tail::[Token]->Either ([Token], [ASTNode]) ParseErr
+parse_parameter_list_tail tokens = repeat_until aux tokens isRparen 
+                                   where 
+                                      aux tokens_1 = case tokens_1 of 
+                                                      (Sym COMMA):ts -> parse_term ts
+                                                      _              -> Right (Error "Undefined token sequence")
+                                      
+                                      isRparen (t:ts) = t == Sym RPAREN
+                                                      
 
