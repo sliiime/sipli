@@ -10,8 +10,8 @@ import Data.Char
 
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
-data Symbol = COMMA | LPAREN | RPAREN | DOT | NECK deriving (Show)
-data Token = StringPL String | Number Int | Sym Symbol deriving (Show)
+data Symbol = COMMA | LPAREN | RPAREN | DOT | NECK deriving (Show, Eq)
+data Token = StringPL String | Number Int | Sym Symbol deriving (Show, Eq)
 data LexError = Error {line::Int, col::Int, ch::Char}
 
 instance Show LexError where 
