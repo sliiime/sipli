@@ -124,7 +124,7 @@ parse_term_list_tail_1::[Token]->ParseRes
 parse_term_list_tail_1 tokens = do
                                   (rest_1, [Sym COMMA])    <- consume_tokens 1 tokens
                                   (rest_2, term)           <- parse_term rest_1  
-                                  (rest_3, TermList terms) <- parse_term_list_tail tokens
+                                  (rest_3, TermList terms) <- parse_term_list_tail rest_2
                                   return (rest_3, TermList (term:terms))
                                   
 
