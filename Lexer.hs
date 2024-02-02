@@ -11,8 +11,16 @@ import Data.Char
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
 data Symbol = COMMA | LPAREN | RPAREN | DOT | NECK deriving (Show, Eq)
-data Token = StringPL String | Number Int | Sym Symbol deriving (Show, Eq)
+data Token = StringPL String | Number Int | Sym Symbol deriving (Show)
 data LexError = Error {line::Int, col::Int, ch::Char}
+
+instance Eq Token where 
+ StringPL _ == StringPL _ = True 
+ Number _ == Number _ = True
+ Sym x == Sym y = x == y 
+ _ == _ = False
+
+
 
 instance Show LexError where 
   show (Error line col ch) = "Invalid character : " ++ Prelude.show ch ++ " at line : " ++ Prelude.show line ++ " col : " ++ Prelude.show col 

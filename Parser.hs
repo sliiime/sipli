@@ -3,6 +3,8 @@ module Parser (
 
 import Lexer
 
+{-# ANN module ("hlint: ignore Use camelCase") #-}
+
 -- Program -> Rule_list 
 -- Rule_list -> Rule Rule_list |First = {Identifier} => First+ = {Identifier}
 --              ε              |Follow = {EOF}       => First+ = {EOF}
@@ -28,89 +30,151 @@ import Lexer
 -- Pred_list_tail -> ',' Pred Pred_tail |First = {','}  => First+ = {','} 
 --                    ε                 |Follow = {'.'} => First+ = {'.'}
 
-{-# ANN module ("hlint: ignore Use camelCase") #-}
+type ParseErr = String  
 
-data ParseErr = Error String 
-data AbastractSyntaxTree = Root ASTNode | Empty
-data ASTNode = Program [ASTNode] | Rule ASTNode [ASTNode] | Pred String [ASTNode] | TermVar String | TermNum Int deriving (Eq)
+parse_error::Either ParseErr a
+parse_error = Left "Unexpected token sequence"
 
-add_node::ASTNode -> Either ([Token], [ASTNode]) ParseErr -> Either ([Token], [ASTNode]) ParseErr
-add_node node lr = case lr of 
-                      Left (tokens, nodes) -> Left (tokens, node:nodes)
-                      Right err            -> Right err
+string_pl::Token
+string_pl = StringPL ""
 
-repeat_until::([Token] -> Either ([Token], ASTNode) ParseErr) -> [Token] -> ([Token]->Bool) -> Either ([Token], [ASTNode]) ParseErr
-repeat_until parser tokens cond | cond tokens = Left (tokens, []) 
-                                | otherwise   = case parser tokens of
-                                  Left (tokens_1, node) -> add_node node (repeat_until parser tokens_1 cond)
-                                  Right err             -> Right err
+                                                                                                                                 -- Term = Var | Num | Pred
+data ASTNode = RuleList [ASTNode] | Rule ASTNode [ASTNode] | Pred String [ASTNode] | PredList [ASTNode] | Var String | Num Int | TermList [ASTNode] deriving (Show)
 
-consume_token::Token->[Token]->Either [Token] ParseErr
-consume_token target (token:tokens) | target == token = Left tokens 
-                                    | otherwise       = Right (Error "Undefined token sequence")
+type ParseRes = Either ParseErr ([Token], ASTNode) 
 
-consume_after::([Token] -> Either ([Token], ASTNode) ParseErr) -> [[Token] -> Either [Token] ParseErr] -> ([Token] -> Either ([Token], ASTNode) ParseErr)
-consume_after parser [] = parser
-consume_after parser (c:cs) = consume_after (unwr parser c) cs 
-                              where 
-                                unwr a b i = case a i of 
-                                              Left (tokens, node) -> case b tokens of 
-                                                                      Left tokens_1 -> Left (tokens_1, node)
-                                                                      Right err_1   -> Right err_1
+instance MonadFail (Either ParseErr) where
+    fail _ = parse_error
+      
 
-                                              Right err           -> Right err
+peak_tokens::Int->[Token]->Either ParseErr [Token]
+peak_tokens n tokens | n > 0 = case tokens of 
+                                (t:ts) -> do 
+                                            peaked <- peak_tokens (n-1) ts
+                                            return (t:peaked)
+                                []     -> parse_error
 
-parse_program::[Token] -> Either ([Token], ASTNode) ParseErr
-parse_program tokens = case parse_rule_list tokens of 
-                          Left ([], rules) -> Left ([], Program rules) 
-                          _                -> Right (Error "Undefined token sequence") 
+                     | otherwise = return []
 
-parse_rule_list::[Token] -> Either ([Token], [ASTNode]) ParseErr
-parse_rule_list tokens = repeat_until parse_rule tokens null 
+consume_tokens::Int->[Token]->Either ParseErr ([Token],[Token])
+consume_tokens n tokens | n > 0 = case tokens of 
+                                  (t:ts) -> do
+                                              (rest, consumed) <- consume_tokens (n-1) ts
+                                              return (rest, t:consumed)
+                                  []     -> parse_error
 
-parse_rule::[Token]->Either ([Token], ASTNode) ParseErr
-parse_rule tokens = parse_pred tokens
+                        | otherwise = return ([],[])
 
-parse_pred::[Token]->Either ([Token], ASTNode) ParseErr
-parse_pred ((StringPL id):(Sym LPAREN):ts) = case parse_term_list ts of 
-                                              Left  ((Sym RPAREN):ts_1, terms) -> Left (ts_1, Pred id terms)
-                                              Right err                        -> Right err
-                                              _                                -> Right (Error "Undefined token sequence")
 
-parse_pred _ = Right (Error "Undefined token sequence")
+parse_program::[Token]->ParseRes
+parse_program tokens = parse_rule_list tokens
 
-parse_term_list::[Token]->Either ([Token], [ASTNode]) ParseErr
-parse_term_list tokens = case parse_term tokens of 
-                            Left (tokens_1, node) -> add_node node (parse_term_list_tail tokens_1)
-                            Right err             -> Right err
+parse_rule_list::[Token]->ParseRes
+parse_rule_list [] = return ([], RuleList [])
+parse_rule_list tokens = do 
+                          (rest, rule)         <- parse_rule tokens
+                          ([], RuleList rules) <- parse_rule_list rest
+                          return ([], RuleList (rule:rules))
 
-parse_term::[Token]->Either ([Token], ASTNode) ParseErr
-parse_term ((StringPL id):ts) = case parse_parameter_list ts of 
-                                  Left (tokens, []) -> Left (tokens, TermVar id)  
-                                  Left (tokens, params) -> Left (tokens, Pred id params)
-                                  Right err             -> Right err
-                                   
-parse_term ((Number num):ts)  = Left (ts, TermNum num)
-parse_term _                  = Right (Error "Undefined token sequence")
+parse_rule::[Token]->ParseRes
+parse_rule tokens = do 
+                      (rest_1, pred) <- parse_pred tokens
+                      (rest_2, PredList tail) <- parse_pred_tail rest_1
+                      return (rest_2,Rule pred tail)
+
+
+
+
+parse_pred::[Token]->ParseRes
+parse_pred tokens = do 
+                      (rest_1, [StringPL id, Sym LPAREN]) <- consume_tokens 2 tokens  
+                      (rest_2, TermList term_list)        <- parse_term_list_plus rest_1  
+                      (rest_3, [Sym RPAREN])              <- consume_tokens 1 rest_2 
+                      return (rest_3, Pred id term_list)
                       
 
-parse_parameter_list::[Token]->Either ([Token], [ASTNode]) ParseErr
-parse_parameter_list ((Sym LPAREN):ts) = case parse_term ts of  
-                                            Left (tokens, term) -> parse_term_list ts
-                                            Right err           -> Right err
-                                          
-parse_parameter_list ((Sym COMMA):ts)  = Left (Sym COMMA:ts, [])
-parse_parameter_list ((Sym RPAREN):ts) = Left (Sym RPAREN:ts, []) 
-parse_parameter_list _                 = Right (Error "Undefined token sequence")
+parse_term_list_plus::[Token]->ParseRes
+parse_term_list_plus tokens = do
+                                (rest_1, term)               <- parse_term tokens
+                                (rest_2, TermList term_list) <- parse_term_list_tail rest_1
+                                return (rest_2, TermList (term:term_list))
 
-parse_term_list_tail::[Token]->Either ([Token], [ASTNode]) ParseErr
-parse_term_list_tail tokens = repeat_until aux tokens isRparen 
-                                   where 
-                                      aux tokens_1 = case tokens_1 of 
-                                                      (Sym COMMA):ts -> parse_term ts
-                                                      _              -> Right (Error "Undefined token sequence")
+                       
+parse_term::[Token]->ParseRes
+parse_term tokens = do
+                      (rest_1, [StringPL id])          <- consume_tokens 1 tokens
+                      (rest_2, TermList params)        <- parse_parameter_list rest_1
+                      term <- case length params of 
+                              0 -> return (Var id)
+                              _ -> return (Pred id params)
+
+                      return (rest_2, term)
+
+parse_term_list_tail::[Token]->ParseRes
+parse_term_list_tail tokens = case peak_tokens 1 tokens of 
+                                Right [Sym COMMA]  -> parse_term_list_tail_1 tokens
+                                Right [Sym RPAREN] -> return (tokens, TermList [])
+                                Left err           -> Left err
+
+parse_term_list_tail_1::[Token]->ParseRes
+parse_term_list_tail_1 tokens = do
+                                  (rest_1, [Sym COMMA])    <- consume_tokens 1 tokens
+                                  (rest_2, term)           <- parse_term rest_1  
+                                  (rest_3, TermList terms) <- parse_term_list_tail tokens
+                                  return (rest_3, TermList (term:terms))
+                                  
+
+parse_parameter_list::[Token]->ParseRes
+parse_parameter_list tokens = case peak_tokens 1 tokens of 
+                                Right [Sym LPAREN] -> parse_parameter_list_1 tokens
+                                Right [Sym COMMA]  -> return (tokens, TermList [])
+                                Right [Sym RPAREN] -> return (tokens, TermList [])
+                                Right _            -> parse_error
+                                Left err           -> Left err
                                       
-                                      isRparen ((Sym RPAREN):_) = True 
-                                      isRparen  _               = False
-                                                      
+
+parse_parameter_list_1::[Token]->ParseRes
+parse_parameter_list_1 tokens = do
+                                  (rest_1, [Sym LPAREN])   <- consume_tokens 1 tokens
+                                  (rest_2, TermList terms) <- parse_term_list_plus rest_1
+                                  (rest_3, [Sym RPAREN])   <- consume_tokens 1 rest_2
+                                  return (rest_3, TermList terms)
+
+parse_pred_tail::[Token]->ParseRes
+parse_pred_tail tokens = case peak_tokens 1 tokens of 
+                            Right [Sym DOT] -> do
+                                                (rest_1, [Sym DOT]) <- consume_tokens 1 tokens 
+                                                return (rest_1, PredList [])
+
+                            Right [Sym NECK] -> parse_pred_definition tokens  
+                            Right _          -> parse_error
+                            Left err         -> Left err
+                                              
+
+parse_pred_definition::[Token]->ParseRes 
+parse_pred_definition tokens = do
+                                (rest_1, [Sym NECK]) <- consume_tokens 1 tokens
+                                (rest_2, pred_list)  <- parse_pred_list rest_1
+                                (rest_3, [Sym DOT])  <- consume_tokens 1 tokens
+                                return (rest_3, pred_list)
+
+parse_pred_list::[Token]->ParseRes
+parse_pred_list tokens = case peak_tokens 1 tokens of 
+                            Right [StringPL _] -> do 
+                                                    (rest_1, pred)           <- parse_pred tokens 
+                                                    (rest_2, PredList preds) <- parse_pred_list rest_1
+                                                    return (rest_2, PredList (pred:preds))
+
+                            Right [Sym DOT]    -> Right (tokens, PredList []) 
+                            Right _            -> parse_error
+                            Left  err          -> Left err
+
+
+
+
+                                                     
+                                
+
+
+
 
