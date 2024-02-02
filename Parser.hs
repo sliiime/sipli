@@ -1,4 +1,8 @@
 module Parser ( 
+  ParseRes(..),
+  ASTNode(..),
+  parse_program
+
 ) where 
 
 import Lexer
@@ -63,11 +67,11 @@ consume_tokens n tokens | n > 0 = case tokens of
                                               return (rest, t:consumed)
                                   []     -> parse_error
 
-                        | otherwise = return ([],[])
+                        | otherwise = return (tokens, [])
 
 
 parse_program::[Token]->ParseRes
-parse_program tokens = parse_rule_list tokens
+parse_program = parse_rule_list 
 
 parse_rule_list::[Token]->ParseRes
 parse_rule_list [] = return ([], RuleList [])
@@ -78,9 +82,9 @@ parse_rule_list tokens = do
 
 parse_rule::[Token]->ParseRes
 parse_rule tokens = do 
-                      (rest_1, pred) <- parse_pred tokens
+                      (rest_1, pred)          <- parse_pred tokens
                       (rest_2, PredList tail) <- parse_pred_tail rest_1
-                      return (rest_2,Rule pred tail)
+                      return (rest_2, Rule pred tail)
 
 
 
@@ -102,7 +106,7 @@ parse_term_list_plus tokens = do
                        
 parse_term::[Token]->ParseRes
 parse_term tokens = do
-                      (rest_1, [StringPL id])          <- consume_tokens 1 tokens
+                      (rest_1, [StringPL id])          <- consume_tokens 1 tokens -- could be num 
                       (rest_2, TermList params)        <- parse_parameter_list rest_1
                       term <- case length params of 
                               0 -> return (Var id)
@@ -155,7 +159,7 @@ parse_pred_definition::[Token]->ParseRes
 parse_pred_definition tokens = do
                                 (rest_1, [Sym NECK]) <- consume_tokens 1 tokens
                                 (rest_2, pred_list)  <- parse_pred_list rest_1
-                                (rest_3, [Sym DOT])  <- consume_tokens 1 tokens
+                                (rest_3, [Sym DOT])  <- consume_tokens 1 rest_2
                                 return (rest_3, pred_list)
 
 parse_pred_list::[Token]->ParseRes
