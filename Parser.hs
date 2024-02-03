@@ -12,8 +12,8 @@ import Lexer
 -- Program -> Rule_list 
 -- Rule_list -> Rule Rule_list |First = {Identifier} => First+ = {Identifier}
 --              ε              |Follow = {EOF}       => First+ = {EOF}
--- Rule -> Pred Lpred_tail 
--- Lpred_tail -> .               |First = {'.'}  => First+ = {'.'}
+-- Rule -> Pred Rule_tail
+-- Rule_tail -> .                |First = {'.'}  => First+ = {'.'}
 --               Pred_definition |First = {':-'} => First+ = {':-'}
 --               
 -- Pred -> Identifier '(' Term_list_1+ ')'  
@@ -31,8 +31,8 @@ import Lexer
 -- Pred_list -> Pred Pred_list_tail |First = {Identifier} => First+ = {Identifier}
 --              ε                   |Follow = {'.'}       => First+ = {'.'}
 --
--- Pred_list_tail -> ',' Pred Pred_tail |First = {','}  => First+ = {','} 
---                    ε                 |Follow = {'.'} => First+ = {'.'}
+-- Pred_list_tail -> ',' Pred Pred_list_tail |First = {','}  => First+ = {','} 
+--                    ε                      |Follow = {'.'} => First+ = {'.'}
 
 type ParseErr = String  
 
@@ -83,7 +83,7 @@ parse_rule_list tokens = do
 parse_rule::[Token]->ParseRes
 parse_rule tokens = do 
                       (rest_1, pred)          <- parse_pred tokens
-                      (rest_2, PredList tail) <- parse_pred_tail rest_1
+                      (rest_2, PredList tail) <- parse_rule_tail rest_1
                       return (rest_2, Rule pred tail)
 
 
@@ -144,19 +144,19 @@ parse_parameter_list_1 tokens = do
                                   (rest_3, [Sym RPAREN])   <- consume_tokens 1 rest_2
                                   return (rest_3, TermList terms)
 
-parse_pred_tail::[Token]->ParseRes
-parse_pred_tail tokens = case peak_tokens 1 tokens of 
+parse_rule_tail::[Token]->ParseRes
+parse_rule_tail tokens = case peak_tokens 1 tokens of 
                             Right [Sym DOT] -> do
                                                 (rest_1, [Sym DOT]) <- consume_tokens 1 tokens 
                                                 return (rest_1, PredList [])
 
-                            Right [Sym NECK] -> parse_pred_definition tokens  
+                            Right [Sym NECK] -> parse_rule_definition tokens  
                             Right _          -> parse_error
                             Left err         -> Left err
                                               
 
-parse_pred_definition::[Token]->ParseRes 
-parse_pred_definition tokens = do
+parse_rule_definition::[Token]->ParseRes 
+parse_rule_definition tokens = do
                                 (rest_1, [Sym NECK]) <- consume_tokens 1 tokens
                                 (rest_2, pred_list)  <- parse_pred_list rest_1
                                 (rest_3, [Sym DOT])  <- consume_tokens 1 rest_2
@@ -165,13 +165,26 @@ parse_pred_definition tokens = do
 parse_pred_list::[Token]->ParseRes
 parse_pred_list tokens = case peak_tokens 1 tokens of 
                             Right [StringPL _] -> do 
-                                                    (rest_1, pred)           <- parse_pred tokens 
-                                                    (rest_2, PredList preds) <- parse_pred_list rest_1
+                                                    (rest_1, pred)           <- parse_pred tokens
+                                                    (rest_2, PredList preds) <- parse_pred_list_tail rest_1
                                                     return (rest_2, PredList (pred:preds))
 
                             Right [Sym DOT]    -> Right (tokens, PredList []) 
                             Right _            -> parse_error
                             Left  err          -> Left err
+
+parse_pred_list_tail::[Token]->ParseRes
+parse_pred_list_tail tokens = case peak_tokens 1 tokens of 
+                                Right [Sym COMMA] -> do
+                                                        (rest_1, [Sym COMMA])        <- consume_tokens 1 tokens 
+                                                        (rest_2, pred)               <- parse_pred rest_1
+                                                        (rest_3, PredList pred_list) <- parse_pred_list_tail rest_2
+                                                        return (rest_3, PredList (pred:pred_list))
+
+                                Right [Sym DOT]   -> return (tokens, PredList [])
+                                Right _           -> parse_error
+                                Left err          -> Left err
+                                
 
 
 
