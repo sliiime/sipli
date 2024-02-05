@@ -11,11 +11,11 @@ import Data.Char
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
 data Symbol = COMMA | LPAREN | RPAREN | DOT | NECK deriving (Show, Eq)
-data Token = StringPL String | Number Int | Sym Symbol deriving (Show)
+data Token = PredId String | VarId String | Number Int | Sym Symbol deriving (Show)
 data LexError = Error {line::Int, col::Int, ch::Char}
 
 instance Eq Token where 
- StringPL _ == StringPL _ = True 
+ PredId _ == PredId _ = True 
  Number _ == Number _ = True
  Sym x == Sym y = x == y 
  _ == _ = False
@@ -58,24 +58,38 @@ read_number ('0':cs) col = case cs of
                                                                                             
 read_number (c:cs) col = read_number_aux (c:cs) col 0
 
-read_string_aux::String -> Int -> Either (String, Int, Token) LexError
-read_string_aux [] col = Left ([], col, StringPL "")
-read_string_aux (c:cs) col | isAlphaNum c = case read_string_aux cs (col+1) of 
-                                              Left (rest, col_1, StringPL str) -> Left (rest, col_1, StringPL (c:str))
-                                              err -> err
-                           | isSymbolPL (c:cs) = Left (c:cs, col, StringPL "") 
-                           | isSpace c = Left (c:cs, col, StringPL "")
-                           | otherwise = Right Error {line = 0, col = col, ch = c} 
+read_var_id_aux::String -> Int -> Either (String, Int, Token) LexError
+read_var_id_aux (c:cs) col | isAlphaNum c = case read_pred_id_aux cs (col+1) of 
+                                                Left (rest, col_1, PredId str) -> Left (rest, col_1, PredId (c:str))
+                                                err -> err
+                           | isSymbolPL (c:cs) = Left (c:cs, col, PredId "")
+                           | isSpace c = Left (c:cs, col, PredId "")
+                           | otherwise = Right (Error {line = 0, col = col, ch = c})
 
-read_string::String -> Int -> Either (String, Int, Token) LexError
-read_string [] col = Right (Error {line = 0, col = col, ch = '\0'})
-read_string (c:cs) col | isAlpha c = read_string_aux (c:cs) col 
-                       | otherwise = Right Error {line = 0, col = col, ch = c}
+read_var_id::String->Int -> Either (String, Int, Token) LexError
+read_var_id [] col = Right (Error {line = 0, col = col, ch = '\0'})
+read_var_id (c:cs) col | isAsciiUpper c = read_var_id_aux(c:cs) col
+                       | otherwise = Right (Error {line = 0, col = col, ch = c})
+
+read_pred_id_aux::String -> Int -> Either (String, Int, Token) LexError
+read_pred_id_aux [] col = Left ([], col, PredId "")
+read_pred_id_aux (c:cs) col | isAlphaNum c = case read_pred_id_aux cs (col+1) of 
+                                              Left (rest, col_1, PredId str) -> Left (rest, col_1, PredId (c:str))
+                                              err -> err
+                            | isSymbolPL (c:cs) = Left (c:cs, col, PredId "") 
+                            | isSpace c = Left (c:cs, col, PredId "")
+                            | otherwise = Right Error {line = 0, col = col, ch = c} 
+
+read_pred_id::String -> Int -> Either (String, Int, Token) LexError
+read_pred_id [] col = Right (Error {line = 0, col = col, ch = '\0'})
+read_pred_id (c:cs) col | isAsciiLower c = read_pred_id_aux (c:cs) col 
+                        | otherwise = Right Error {line = 0, col = col, ch = c}
 
 read_token::String -> Int -> Either (String, Int, Token) LexError
 read_token (c:cs) col | isDigit c = read_number (c:cs) col
                       | isSymbolPL (c:cs) = read_symbolPL (c:cs) col
-                      | isAlpha c = read_string (c:cs) col
+                      | isAsciiUpper c = read_var_id (c:cs) col
+                      | isAsciiLower c = read_pred_id (c:cs) col
                       | otherwise = Right Error {line = 0, col = col, ch = c}
 
 add_token::Token -> Either [Token] LexError -> Either [Token] LexError

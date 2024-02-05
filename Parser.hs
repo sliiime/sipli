@@ -10,38 +10,38 @@ import Lexer
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
 -- Program -> Rule_list 
--- Rule_list -> Rule Rule_list |First = {Identifier} => First+ = {Identifier}
+-- Rule_list -> Rule Rule_list |First = {Predicate_identifier} => First+ = {Predicate_identifier}
 --              ε              |Follow = {EOF}       => First+ = {EOF}
 -- Rule -> Pred Rule_tail
 -- Rule_tail -> .                |First = {'.'}  => First+ = {'.'}
 --               Pred_definition |First = {':-'} => First+ = {':-'}
 --               
--- Pred -> Identifier '(' Term_list_1+ ')'  
+-- Pred -> Predicate_identifier '(' Term_list_1+ ')'  
 -- Term_list_1+ -> Term Term_list_tail
 -- Term_list_tail -> ',' Term Term_list_tail |First = {','}  => First+ = {','}
 --                    ε                      |Follow = {')'} => First+ = {')'} 
 --
--- Term -> Identifier Parameter_list |First = {Identifier} => First+ = {Identifier}
---         Number                    |First = {Number}     => First+ = {Number}
+-- Term -> Predicate_identifier Parameter_list |First = {Predicate_identifier} => First+ = {Predicate_identifier}
+--         Variable_identifier                 |First = {Variable_identifier}  => First+ = {Variable_identifier}
+--         Number                              |First = {Number}               => First+ = {Number}
 --
 -- Parameter_list -> '(' Term_list_1+ ')' |First = {'('}      => First+ = {'('}
 --                    ε                   |Follow = {',',')'} => First+ = {',',')'} 
 --
 -- Pred_definition -> ':-' Pred_list '.'  
--- Pred_list -> Pred Pred_list_tail |First = {Identifier} => First+ = {Identifier}
---              ε                   |Follow = {'.'}       => First+ = {'.'}
+-- Pred_list -> Pred Pred_list_tail |First = {Predicate_identifier} => First+ = {Predicate_identifier}
+--              ε                   |Follow = {'.'}                 => First+ = {'.'}
 --
 -- Pred_list_tail -> ',' Pred Pred_list_tail |First = {','}  => First+ = {','} 
 --                    ε                      |Follow = {'.'} => First+ = {'.'}
+--
+-- Predicate_identifier -> [a-z][a-zA-Z0-9]*
+-- Variable_identifier  -> [A-Z][a-zA-Z0-9]*
 
 type ParseErr = String  
 
 parse_error::Either ParseErr a
 parse_error = Left "Unexpected token sequence"
-
-string_pl::Token
-string_pl = StringPL ""
-
                                                                                                                                  -- Term = Var | Num | Pred
 data ASTNode = RuleList [ASTNode] | Rule ASTNode [ASTNode] | Pred String [ASTNode] | PredList [ASTNode] | Var String | Num Int | TermList [ASTNode] deriving (Show)
 
@@ -91,9 +91,9 @@ parse_rule tokens = do
 
 parse_pred::[Token]->ParseRes
 parse_pred tokens = do 
-                      (rest_1, [StringPL id, Sym LPAREN]) <- consume_tokens 2 tokens  
-                      (rest_2, TermList term_list)        <- parse_term_list_plus rest_1  
-                      (rest_3, [Sym RPAREN])              <- consume_tokens 1 rest_2 
+                      (rest_1, [PredId id, Sym LPAREN]) <- consume_tokens 2 tokens  
+                      (rest_2, TermList term_list)      <- parse_term_list_plus rest_1  
+                      (rest_3, [Sym RPAREN])            <- consume_tokens 1 rest_2 
                       return (rest_3, Pred id term_list)
                       
 
@@ -105,19 +105,29 @@ parse_term_list_plus tokens = do
 
                        
 parse_term::[Token]->ParseRes
-parse_term tokens = do
-                      (rest_1, [StringPL id])          <- consume_tokens 1 tokens -- could be num 
-                      (rest_2, TermList params)        <- parse_parameter_list rest_1
-                      term <- case length params of 
-                              0 -> return (Var id)
-                              _ -> return (Pred id params)
+parse_term tokens = case peak_tokens 1 tokens of 
+                        Right [PredId _] -> do
+                                          (rest_1, [PredId id])          <- consume_tokens 1 tokens  
+                                          (rest_2, TermList params)      <- parse_parameter_list rest_1
+                                          return (rest_2, Pred id params)
 
-                      return (rest_2, term)
+                        Right [VarId _]  -> do
+                                           (rest_3, [VarId id])         <- consume_tokens 1 tokens
+                                           return (rest_3, Var id)
+
+                        Right [Number _] -> do
+                                          (rest, [Number n])            <- consume_tokens 1 tokens
+                                          return (rest, Num n)
+
+                        Right _          -> parse_error
+                        Left err         -> Left err
+                                          
 
 parse_term_list_tail::[Token]->ParseRes
 parse_term_list_tail tokens = case peak_tokens 1 tokens of 
                                 Right [Sym COMMA]  -> parse_term_list_tail_1 tokens
                                 Right [Sym RPAREN] -> return (tokens, TermList [])
+                                Right _            -> parse_error 
                                 Left err           -> Left err
 
 parse_term_list_tail_1::[Token]->ParseRes
@@ -164,7 +174,7 @@ parse_rule_definition tokens = do
 
 parse_pred_list::[Token]->ParseRes
 parse_pred_list tokens = case peak_tokens 1 tokens of 
-                            Right [StringPL _] -> do 
+                            Right [PredId _] -> do 
                                                     (rest_1, pred)           <- parse_pred tokens
                                                     (rest_2, PredList preds) <- parse_pred_list_tail rest_1
                                                     return (rest_2, PredList (pred:preds))
