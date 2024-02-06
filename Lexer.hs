@@ -11,14 +11,8 @@ import Data.Char
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
 data Symbol = COMMA | LPAREN | RPAREN | DOT | NECK deriving (Show, Eq)
-data Token = PredId String | VarId String | Number Int | Sym Symbol deriving (Show)
+data Token = PredId String | VarId String | Number Int | Sym Symbol deriving (Show, Eq)
 data LexError = Error {line::Int, col::Int, ch::Char}
-
-instance Eq Token where 
- PredId _ == PredId _ = True 
- Number _ == Number _ = True
- Sym x == Sym y = x == y 
- _ == _ = False
 
 
 

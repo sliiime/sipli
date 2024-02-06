@@ -1,8 +1,12 @@
 module Parser ( 
   ParseRes(..),
   ASTNode(..),
-  parse_program
-
+  parse_program,
+  isConst,
+  isVar,
+  isPred,
+  same_pred,
+  to_string
 ) where 
 
 import Lexer
@@ -43,14 +47,13 @@ type ParseErr = String
 parse_error::Either ParseErr a
 parse_error = Left "Unexpected token sequence"
                                                                                                                                  -- Term = Var | Num | Pred
-data ASTNode = RuleList [ASTNode] | Rule ASTNode [ASTNode] | Pred String [ASTNode] | PredList [ASTNode] | Var String | Num Int | TermList [ASTNode] deriving (Show)
+data ASTNode = RuleList [ASTNode] | Rule ASTNode [ASTNode] | Pred String [ASTNode] | PredList [ASTNode] | Var String | Num Int | TermList [ASTNode] deriving (Show,Eq)
 
 type ParseRes = Either ParseErr ([Token], ASTNode) 
 
 instance MonadFail (Either ParseErr) where
     fail _ = parse_error
       
-
 peak_tokens::Int->[Token]->Either ParseErr [Token]
 peak_tokens n tokens | n > 0 = case tokens of 
                                 (t:ts) -> do 

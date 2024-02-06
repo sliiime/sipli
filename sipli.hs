@@ -2,6 +2,7 @@ import System.IO
 import System.Directory
 import Lexer
 import Parser
+import Unifier
 
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
@@ -35,11 +36,14 @@ execute_cmd (Filename filename) ctx = do
                                     else do
                                       handle <- openFile filename ReadMode
                                       contents  <- hGetContents handle
-                                      case tokenize contents 0 0 of 
-                                        Left tokens -> print (parse_program tokens)
+                                      let lex_result = tokenize contents 0 0
+                                      case lex_result of 
+                                        Left tokens -> do 
+                                                          print tokens
+                                                          print (parse_program tokens)
+
                                         Right err   -> print err
 
-                                      print (tokenize contents 0 0)
 
                                       putStrLn contents
                                       return ctx
