@@ -53,16 +53,16 @@ read_number ('0':cs) col = case cs of
 read_number (c:cs) col = read_number_aux (c:cs) col 0
 
 read_var_id_aux::String -> Int -> Either (String, Int, Token) LexError
-read_var_id_aux (c:cs) col | isAlphaNum c = case read_pred_id_aux cs (col+1) of 
-                                                Left (rest, col_1, PredId str) -> Left (rest, col_1, PredId (c:str))
+read_var_id_aux (c:cs) col | isAlphaNum c = case read_var_id_aux cs (col+1) of 
+                                                Left (rest, col_1, VarId str) -> Left (rest, col_1, VarId (c:str))
                                                 err -> err
-                           | isSymbolPL (c:cs) = Left (c:cs, col, PredId "")
-                           | isSpace c = Left (c:cs, col, PredId "")
+                           | isSymbolPL (c:cs) = Left (c:cs, col, VarId "")
+                           | isSpace c = Left (c:cs, col, VarId "")
                            | otherwise = Right (Error {line = 0, col = col, ch = c})
 
 read_var_id::String->Int -> Either (String, Int, Token) LexError
 read_var_id [] col = Right (Error {line = 0, col = col, ch = '\0'})
-read_var_id (c:cs) col | isAsciiUpper c = read_var_id_aux(c:cs) col
+read_var_id (c:cs) col | isAsciiUpper c = read_var_id_aux (c:cs) col
                        | otherwise = Right (Error {line = 0, col = col, ch = c})
 
 read_pred_id_aux::String -> Int -> Either (String, Int, Token) LexError
