@@ -6,13 +6,14 @@ import Unifier
 
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
-data Cmd = Filename String | Query String | Exit | Undefined String deriving (Show) 
+data Cmd = Filename String | Unify [String] | Query String | Exit | Undefined String deriving (Show) 
 data Context = Ctx String | Empty | EOC 
 
 parse_input::String->Cmd
 parse_input ":q" = Exit 
 parse_input input = case x of 
                     ["load", "file", filename] -> Filename filename
+                    ("unify":preds) -> Unify preds --Unify map parse_pred preds
                     _ -> Undefined "Undefined control sequence"
                     where x = words input
 
@@ -24,6 +25,23 @@ print_tokens (Left (t:ts)) = do
 
 print_tokens (Right err) = print err
 print_tokens (Left []) = print '\n'
+
+read_preds::[String]->Either String [ASTNode]
+read_preds [] = Right []
+read_preds (s:ss) = case tokenize s 0 0 of 
+                      Right e     -> Left (show e)
+                      Left tokens -> case parse_pred tokens of 
+                                      Right ([],pred) -> do
+                                                          preds <- read_preds ss
+                                                          return (pred : preds)
+                                      Left err        -> Left err
+
+print_recursively::(Show a) => [a] -> Context -> IO Context
+print_recursively [] ctx = return ctx
+print_recursively (a:as) ctx = do 
+                            print a 
+                            print_recursively as ctx
+
 
 execute_cmd::Cmd->Context->IO Context
 execute_cmd (Filename filename) ctx = do
@@ -48,6 +66,9 @@ execute_cmd (Filename filename) ctx = do
                                       putStrLn contents
                                       return ctx
 
+execute_cmd (Unify preds) ctx   = case read_preds preds of 
+                                    Left  err   -> print_recursively [err] ctx
+                                    Right nodes -> print_recursively [nodes] ctx
 
 execute_cmd (Undefined msg) ctx = do 
                                  putStrLn msg 

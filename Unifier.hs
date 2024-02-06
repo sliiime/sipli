@@ -27,11 +27,12 @@ same_pred::ASTNode -> ASTNode -> Bool
 _ `same_pred` _ = False
 
 contains_var::ASTNode -> ASTNode -> Bool
-(Pred _ []) `contains_var` _ = False
-(Pred _ ps) `contains_var` v = foldr (or . aux v) False ps
+contains_var (Pred _ []) _ = False
+contains_var (Pred _ ps) v = foldr (\x acc -> acc || aux v x) False ps
                                where 
-                                aux _ (Pred _ []) = False
-                                aux v (Pred _ ps) = Pred _ ps `contains_var` v
+                                aux::ASTNode -> ASTNode -> Bool
+                                aux _ (Pred _  []) = False
+                                aux v (Pred id ps) = Pred id ps `contains_var` v
                                 aux v w           = v == w
 _ `contains_var` _ = False
 
@@ -43,9 +44,9 @@ type UnifyRes = Either UnifyErr Subs
 find_sub::ASTNode -> Subs -> ASTNode
 find_sub key subs = fromMaybe key (sub_lookup key subs) 
                     where 
-                     sub_lookup key []            = Nothing
-                     sub_lookup key ((key,val):t) = return val 
-                     sub_lookup key (_:t)         = sub_lookup key t
+                     sub_lookup key []                      = Nothing
+                     sub_lookup key ((k,val):t) | key == k  = return val 
+                                                | otherwise = sub_lookup key t 
 
 arity_error::Either String a
 arity_error = Left "Cannot unify predicates with different arity"
@@ -76,22 +77,23 @@ substitute target with subs = aux target with False subs
 --              Pred       Var        Repl       
 replace_vars::ASTNode -> ASTNode -> ASTNode -> ASTNode
 replace_vars (Pred id []) _ _ = Pred id []
-replace_vars (Pred id ps) v s = Pred id map (\pred -> replace_vars pred v s) ps
-replace_vars (Var x) (Var x) sub = sub
+replace_vars (Pred id ps) v s = Pred id (map (\pred -> replace_vars pred v s) ps)
+replace_vars (Var x) (Var y) sub | x == y    = sub
+                                 | otherwise = Var x
 replace_vars x _ _  = x
 
 unify::ASTNode -> ASTNode -> Subs -> UnifyRes
 unify a1 a2 s | isConst f1 && isConst f2 = if f1 == f2 
                                             then return s
                                             else matching_error f1 f2
-              | isConst f1 && isVar f2   = return substitute f2 f1 s
-              | isVar f1 && isConst f2   = return substitute f1 f2 s
-              | isVar f1 && isVar f2     = return substitute f1 f2 s
+              | isConst f1 && isVar f2   = return (substitute f2 f1 s)
+              | isVar f1 && isConst f2   = return (substitute f1 f2 s)
+              | isVar f1 && isVar f2     = return (substitute f1 f2 s)
               | isVar f1 && isPred f2    = if not (f2 `contains_var` f1) 
-                                              then return substitute f1 f2 s
+                                              then return (substitute f1 f2 s)
                                               else substitution_error f1 f2
               | isPred f1 && isVar f2    = if not (f1 `contains_var` f2)
-                                              then return substitute f2 f1 s
+                                              then return (substitute f2 f1 s)
                                               else substitution_error f1 f2
               | isPred f1 && isPred f2   = if f1 `same_pred` f2 
                                             then unify_all p1 p2 s

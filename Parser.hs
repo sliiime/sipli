@@ -2,11 +2,7 @@ module Parser (
   ParseRes(..),
   ASTNode(..),
   parse_program,
-  isConst,
-  isVar,
-  isPred,
-  same_pred,
-  to_string
+  parse_pred
 ) where 
 
 import Lexer
