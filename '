@@ -3,16 +3,12 @@ import System.Directory
 import Lexer
 import Parser
 import Unifier
-import SipliError
 
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
 data Cmd = Filename String | Unify [String] | Query String | Exit | Undefined String deriving (Show) 
 data Context = Ctx String | Empty | EOC 
-
-sip::(SipliErrorIF a) => Either a b -> Either SipliError b
-sip (Left e)  = Left (return_error e)
-sip (Right v) = Right v   
+type SipliErr = Either LexErr ParseErr
 
 parse_input::String->Cmd
 parse_input ":q" = Exit 
@@ -31,13 +27,13 @@ print_tokens (Left (t:ts)) = do
 print_tokens (Right err) = print err
 print_tokens (Left []) = print '\n'
 
-strings_to_atoms::[String]-> Either SipliError [ASTNode]
-strings_to_atoms [] = Right []
-strings_to_atoms (s:ss) = do
-                      tokens    <- sip (tokenize s 0 0)
-                      ([],atom) <- sip (parse_pred tokens)
-                      atoms     <- strings_to_atoms ss
-                      return (atom:atoms)
+read_preds::[String]->Either SipliErr [ASTNode]
+read_preds [] = Right []
+read_preds (s:ss) = do 
+                      tokens <- return tokenize s 0 0 
+                      pred   <- parse_pred tokens 
+                      preds  <- read_preds ss
+                      return (pred:preds)
 
 print_recursively::(Show a) => [a] -> Context -> IO Context
 print_recursively [] ctx = return ctx
@@ -59,17 +55,17 @@ execute_cmd (Filename filename) ctx = do
                                       contents  <- hGetContents handle
                                       let lex_result = tokenize contents 0 0
                                       case lex_result of 
-                                        Right tokens -> do 
+                                        Left tokens -> do 
                                                           print tokens
                                                           print (parse_program tokens)
 
-                                        Left err   -> print err
+                                        Right err   -> print err
 
 
                                       putStrLn contents
                                       return ctx
 
-execute_cmd (Unify preds_s) ctx  = case strings_to_atoms preds_s of 
+execute_cmd (Unify preds_s) ctx  = case read_preds preds_s of 
                                     Left  err       -> print_recursively [err] ctx
                                     Right (p1:p2:t) -> case unify p1 p2 [] of
                                                         Right subs -> print_recursively subs ctx

@@ -6,6 +6,7 @@ module Parser (
 ) where 
 
 import Lexer
+import SipliError
 
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
@@ -38,10 +39,8 @@ import Lexer
 -- Predicate_identifier -> [a-z][a-zA-Z0-9]*
 -- Variable_identifier  -> [A-Z][a-zA-Z0-9]*
 
-type ParseErr = String  
-
 parse_error::Either ParseErr a
-parse_error = Left "Unexpected token sequence"
+parse_error = Left (ParseErr "Unexpected token sequence")
                                                                                                                                  -- Term = Var | Num | Pred
 data ASTNode = RuleList [ASTNode] | Rule ASTNode [ASTNode] | Pred String [ASTNode] | PredList [ASTNode] | Var String | Num Int | TermList [ASTNode] deriving (Show,Eq)
 
@@ -180,7 +179,7 @@ parse_pred_list tokens = case peak_tokens 1 tokens of
 
                             Right [Sym DOT]    -> Right (tokens, PredList []) 
                             Right _            -> parse_error
-                            Left  err          -> Left err
+                            Left err           -> Left err
 
 parse_pred_list_tail::[Token]->ParseRes
 parse_pred_list_tail tokens = case peak_tokens 1 tokens of 
