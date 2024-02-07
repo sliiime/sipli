@@ -66,9 +66,11 @@ execute_cmd (Filename filename) ctx = do
                                       putStrLn contents
                                       return ctx
 
-execute_cmd (Unify preds) ctx   = case read_preds preds of 
-                                    Left  err   -> print_recursively [err] ctx
-                                    Right nodes -> print_recursively [nodes] ctx
+execute_cmd (Unify preds_s) ctx  = case read_preds preds_s of 
+                                    Left  err       -> print_recursively [err] ctx
+                                    Right (p1:p2:t) -> case unify p1 p2 [] of
+                                                        Right subs -> print_recursively subs ctx
+                                                        Left  err  -> print_recursively [err] ctx
 
 execute_cmd (Undefined msg) ctx = do 
                                  putStrLn msg 

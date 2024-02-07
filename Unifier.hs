@@ -1,5 +1,8 @@
 module Unifier (
-  unify
+  unify,
+  Subs(..),
+  UnifyErr(..),
+  UnifyRes(..)
 ) where 
 
 import Parser
@@ -64,15 +67,10 @@ substitution_error::ASTNode -> ASTNode -> Either UnifyErr a
 substitution_error _ _ = Left "Substitution error"
 
 substitute::ASTNode -> ASTNode -> Subs -> Subs
-substitute target with subs = aux target with False subs 
-                              where 
-                                aux t w False []       = [(t,w)]
-                                aux t w True  []       = []
-                                aux t w f ((k,v):tail) | t == k = (k, w) : aux t w True tail 
-                                                       | v `contains_var` t = (k, v_1) : aux t w f tail
-                                                       | otherwise = (k,v) : aux t w f tail 
-                                                       where 
-                                                          v_1 = replace_vars v t w
+substitute target with []        = [(target,with)]
+substitute target with ((k,v):t) = (k,v_1) : substitute target with t
+                                    where 
+                                      v_1 = replace_vars v target with
 
 --              Pred       Var        Repl       
 replace_vars::ASTNode -> ASTNode -> ASTNode -> ASTNode
@@ -101,10 +99,16 @@ unify a1 a2 s | isConst f1 && isConst f2 = if f1 == f2
 
               | otherwise = matching_error f1 f2
                 where 
-                  f1 = find_sub a1 s
-                  f2 = find_sub a2 s
+                  f1 = current_form a1 s
+                  f2 = current_form a2 s
                   (Pred _ p1) = f1 
                   (Pred _ p2) = f2
+
+current_form::ASTNode -> Subs -> ASTNode 
+current_form (Pred id []) _ = Pred id []
+current_form (Pred id ps) s = Pred id (map  (`current_form` s) ps)
+current_form (Var x) s = find_sub (Var x) s 
+current_form x _ = x
 
 
 unify_all::[ASTNode] -> [ASTNode] -> Subs -> UnifyRes
