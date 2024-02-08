@@ -63,13 +63,13 @@ matching_error::ASTNode -> ASTNode -> Either UnifyErr a
 matching_error _ _ = Left "Matching error"
 
 substitution_error::ASTNode -> ASTNode -> Either UnifyErr a
--- substitution_error v p = Left ("Cannot substitute var : " ++ to_string v ++ " with predicate : " ++ to_string p) 
+-- substitution_error v p = Left ("Cannot produce_substitution var : " ++ to_string v ++ " with predicate : " ++ to_string p) 
 substitution_error _ _ = Left "Substitution error"
 
-substitute::ASTNode -> ASTNode -> Subs -> Subs
-substitute target with []        = [(target,with)]
-substitute target with ((k,v):t) | target == with = (k,v):t
-                                 | otherwise = (k,v_1) : substitute target with t
+produce_substitution::ASTNode -> ASTNode -> Subs -> Subs
+produce_substitution target with []        = [(target,with)]
+produce_substitution target with ((k,v):t) | target == with = (k,v):t
+                                 | otherwise = (k,v_1) : produce_substitution target with t
                                     where 
                                       v_1 = replace_vars v target with
 
@@ -85,14 +85,14 @@ unify::ASTNode -> ASTNode -> Subs -> UnifyRes
 unify a1 a2 s | isConst f1 && isConst f2 = if f1 == f2 
                                             then return s
                                             else matching_error f1 f2
-              | isConst f1 && isVar f2   = return (substitute f2 f1 s)
-              | isVar f1 && isConst f2   = return (substitute f1 f2 s)
-              | isVar f1 && isVar f2     = return (substitute f1 f2 s)
+              | isConst f1 && isVar f2   = return (produce_substitution f2 f1 s)
+              | isVar f1 && isConst f2   = return (produce_substitution f1 f2 s)
+              | isVar f1 && isVar f2     = return (produce_substitution f1 f2 s)
               | isVar f1 && isPred f2    = if not (f2 `contains_var` f1) 
-                                              then return (substitute f1 f2 s)
+                                              then return (produce_substitution f1 f2 s)
                                               else substitution_error f1 f2
               | isPred f1 && isVar f2    = if not (f1 `contains_var` f2)
-                                              then return (substitute f2 f1 s)
+                                              then return (produce_substitution f2 f1 s)
                                               else substitution_error f1 f2
               | isPred f1 && isPred f2   = if f1 `same_pred` f2 
                                             then unify_all p1 p2 s
@@ -100,16 +100,17 @@ unify a1 a2 s | isConst f1 && isConst f2 = if f1 == f2
 
               | otherwise = matching_error f1 f2
                 where 
-                  f1 = current_form a1 s
-                  f2 = current_form a2 s
+                  f1 = substitute a1 s
+                  f2 = substitute a2 s
                   (Pred _ p1) = f1 
                   (Pred _ p2) = f2
 
-current_form::ASTNode -> Subs -> ASTNode 
-current_form (Pred id []) _ = Pred id []
-current_form (Pred id ps) s = Pred id (map  (`current_form` s) ps)
-current_form (Var x) s = find_sub (Var x) s 
-current_form x _ = x
+substitute::ASTNode -> Subs -> ASTNode 
+substitute (Rule head tail) s = Rule (substitute head s) (map (flip substitute s) tail)
+substitute (Pred id []) _ = Pred id []
+substitute (Pred id ps) s = Pred id (map  (`substitute` s) ps)
+substitute (Var x) s = find_sub (Var x) s 
+substitute x _ = x
 
 
 unify_all::[ASTNode] -> [ASTNode] -> Subs -> UnifyRes
@@ -122,12 +123,7 @@ unify_all (l:ls) (r:rs) s = do
 
 
 
-unify_rule::ASTNode -> ASTNode -> UnifyRes
-unify_rule rule pred = do
-                        unify rule_head pred []
-                       
-                       where 
-                        Rule rule_head rule_tail = rule
+
                         
 
 
