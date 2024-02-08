@@ -68,7 +68,8 @@ substitution_error _ _ = Left "Substitution error"
 
 substitute::ASTNode -> ASTNode -> Subs -> Subs
 substitute target with []        = [(target,with)]
-substitute target with ((k,v):t) = (k,v_1) : substitute target with t
+substitute target with ((k,v):t) | target == with = (k,v):t
+                                 | otherwise = (k,v_1) : substitute target with t
                                     where 
                                       v_1 = replace_vars v target with
 
@@ -118,4 +119,15 @@ unify_all _ [] _          = arity_error
 unify_all (l:ls) (r:rs) s = do 
                               s_1 <- unify l r s
                               unify_all ls rs s_1
+
+
+
+unify_rule::ASTNode -> ASTNode -> UnifyRes
+unify_rule rule pred = do
+                        unify rule_head pred []
+                       
+                       where 
+                        Rule rule_head rule_tail = rule
+                        
+
 

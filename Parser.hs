@@ -42,7 +42,7 @@ import SipliError
 parse_error::Either ParseErr a
 parse_error = Left (ParseErr "Unexpected token sequence")
                                                                                                                                  -- Term = Var | Num | Pred
-data ASTNode = RuleList [ASTNode] | Rule ASTNode [ASTNode] | Pred String [ASTNode] | PredList [ASTNode] | Var String | Num Int | TermList [ASTNode] deriving (Show,Eq)
+data ASTNode = RuleList [ASTNode] | Rule ASTNode ASTNode | Pred String [ASTNode] | PredList [ASTNode] | Var String | Num Int | TermList [ASTNode] deriving (Show,Eq)
 
 type ParseRes = Either ParseErr ([Token], ASTNode) 
 
@@ -81,8 +81,8 @@ parse_rule_list tokens = do
 parse_rule::[Token]->ParseRes
 parse_rule tokens = do 
                       (rest_1, pred)          <- parse_pred tokens
-                      (rest_2, PredList tail) <- parse_rule_tail rest_1
-                      return (rest_2, Rule pred tail)
+                      (rest_2, tail)          <- parse_rule_tail rest_1
+                      return (rest_2, Rule pred  tail)
 
 
 

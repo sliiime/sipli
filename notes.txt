@@ -1,0 +1,4 @@
+1. Change the names of the variables in the queries provided by the user.
+2. Command `unify` only works when it's asked to unify two predicates. (Should be able to work for Pred-Var, Var-Const etc, strings_to_atoms is responsible for that)
+3. Throw better Parser Error 
+
