@@ -1,6 +1,7 @@
 module Parser ( 
   ParseRes(..),
   ASTNode(..),
+  parse_pred_list,
   parse_program,
   contains_var,
   parse_pred,
