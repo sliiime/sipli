@@ -2,10 +2,12 @@ module SipliError (
   SipliError(..),
   SipliErrorIF(..),
   ParseErr(..),
-  LexErr(..)
+  LexErr(..),
+  TDEvalFail(..)
 ) where
 
-data SipliError = LexError LexErr | ParseError ParseErr | UndefError
+
+data SipliError = LexError LexErr | ParseError ParseErr | TopDownEvalFail TDEvalFail | UndefError
 
 instance Show SipliError where
   show (LexError e) = show e
@@ -34,5 +36,11 @@ instance SipliErrorIF LexErr where
 
 instance Show LexErr where 
   show (LexErr line col ch) = "Invalid character : " ++ Prelude.show ch ++ " at line : " ++ Prelude.show line ++ " col : " ++ Prelude.show col 
+
+data TDEvalFail = TDFail String
+
+instance Show TDEvalFail where
+  show (TDFail s) = s 
+
 
 

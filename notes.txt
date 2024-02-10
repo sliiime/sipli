@@ -1,4 +1,10 @@
 1. Change the names of the variables in the queries provided by the user.
 2. Command `unify` only works when it's asked to unify two predicates. (Should be able to work for Pred-Var, Var-Const etc, strings_to_atoms is responsible for that)
 3. Throw better Parser Error 
+4. Should definitions of the same rule be written consecutively?
+5. Should definitions of the same rule have the same number of arguements?
+6. Should all the predicates in a rule tail have a definition?
+7. Maybe group rules in a smarter way? 
+8. Just an idea? Maybe the parser should have a rule for a "Rule definition" and the corresponding ASTNode which is going to contain all the rule definitions (Rule ASTNodes) of that rule.
+9. Try to have a simple word explanation for each component of the project.
 

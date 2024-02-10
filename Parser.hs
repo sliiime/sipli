@@ -2,7 +2,14 @@ module Parser (
   ParseRes(..),
   ASTNode(..),
   parse_program,
-  parse_pred
+  contains_var,
+  parse_pred,
+  same_pred,
+  isConst,
+  vars_of,
+  isFact,
+  isPred,
+  isVar,
 ) where 
 
 import Lexer
@@ -38,6 +45,47 @@ import SipliError
 --
 -- Predicate_identifier -> [a-z][a-zA-Z0-9]*
 -- Variable_identifier  -> [A-Z][a-zA-Z0-9]*
+
+-- Parser Utils --
+isConst::ASTNode -> Bool
+isConst (Pred _ []) = True
+isConst (Num _)     = True 
+isConst _           = False
+
+isPred::ASTNode -> Bool
+isPred (Pred _ []) = False -- Now Iono about that
+isPred (Pred _ _ ) = True
+isPred _           = False
+
+isVar::ASTNode -> Bool
+isVar (Var _)      = True
+isVar _            = False
+
+isFact::ASTNode -> Bool
+isFact (Rule _ []) = True
+isFact _           = False
+
+same_pred::ASTNode -> ASTNode -> Bool
+(Pred x _) `same_pred` (Pred y _) = x == y
+_ `same_pred` _ = False
+
+contains_var::ASTNode -> ASTNode -> Bool
+contains_var (Pred _ []) _ = False
+contains_var (Pred _ ps) v = foldr (\x acc -> acc || aux v x) False ps
+                               where 
+                                aux::ASTNode -> ASTNode -> Bool
+                                aux _ (Pred _  []) = False
+                                aux v (Pred id ps) = Pred id ps `contains_var` v
+                                aux v w           = v == w
+_ `contains_var` _ = False
+
+vars_of::ASTNode -> [ASTNode]
+vars_of (Num _ ) = []
+vars_of (Var id) = [Var id]
+vars_of (Pred _ ps ) = foldr (\ p acc -> vars_of p ++ acc) [] ps
+
+
+-- Parser --
 
 parse_error::Either ParseErr a
 parse_error = Left (ParseErr "Unexpected token sequence")

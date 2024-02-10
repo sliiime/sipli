@@ -1,5 +1,8 @@
 module Unifier (
   unify,
+  same_pred,
+  substitute,
+  compose_subs,
   Subs(..),
   UnifyErr(..),
   UnifyRes(..)
@@ -10,34 +13,9 @@ import Data.Maybe
 
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
-isConst::ASTNode -> Bool
-isConst (Pred _ []) = True
-isConst (Num _)     = True 
-isConst _           = False
-
-isPred (Pred _ []) = False -- Now Iono about that
-isPred (Pred _ _ ) = True
-isPred _           = False
-
-isVar (Var _)      = True
-isVar _            = False
 
 to_string::ASTNode -> String
 to_string _ = ""
-
-same_pred::ASTNode -> ASTNode -> Bool
-(Pred x _) `same_pred` (Pred y _) = x == y
-_ `same_pred` _ = False
-
-contains_var::ASTNode -> ASTNode -> Bool
-contains_var (Pred _ []) _ = False
-contains_var (Pred _ ps) v = foldr (\x acc -> acc || aux v x) False ps
-                               where 
-                                aux::ASTNode -> ASTNode -> Bool
-                                aux _ (Pred _  []) = False
-                                aux v (Pred id ps) = Pred id ps `contains_var` v
-                                aux v w           = v == w
-_ `contains_var` _ = False
 
 type Subs = [(ASTNode, ASTNode)]
 type UnifyErr = String
@@ -106,7 +84,6 @@ unify a1 a2 s | isConst f1 && isConst f2 = if f1 == f2
                   (Pred _ p2) = f2
 
 substitute::ASTNode -> Subs -> ASTNode 
-substitute (Rule head tail) s = Rule (substitute head s) (map (flip substitute s) tail)
 substitute (Pred id []) _ = Pred id []
 substitute (Pred id ps) s = Pred id (map  (`substitute` s) ps)
 substitute (Var x) s = find_sub (Var x) s 
@@ -122,8 +99,7 @@ unify_all (l:ls) (r:rs) s = do
                               unify_all ls rs s_1
 
 
-
-
-                        
+compose_subs::Subs -> Subs -> Subs 
+compose_subs s1 s2 = map (\ (k,v) -> (k, substitute v s2)) s1                      
 
 
