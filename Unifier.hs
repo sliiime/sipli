@@ -2,6 +2,7 @@ module Unifier (
   unify,
   same_pred,
   substitute,
+  print_subs,
   compose_subs,
   Subs(..),
   UnifyErr(..),
@@ -14,6 +15,12 @@ import Data.Maybe
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
 
+print_subs::Subs -> IO ()
+print_subs [] = return ()
+print_subs (vs:t) = do
+                      print vs 
+                      print_subs t
+                        
 to_string::ASTNode -> String
 to_string _ = ""
 

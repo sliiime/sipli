@@ -7,4 +7,5 @@
 7. Maybe group rules in a smarter way? 
 8. Just an idea? Maybe the parser should have a rule for a "Rule definition" and the corresponding ASTNode which is going to contain all the rule definitions (Rule ASTNodes) of that rule.
 9. Try to have a simple word explanation for each component of the project.
+10. Should all modules be contained in one RuleList node or should each one be stored in a separate RuleList node?.
 
