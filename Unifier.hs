@@ -12,6 +12,7 @@ module Unifier (
 
 import Parser
 import Data.Maybe
+import Utils
 
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
@@ -28,11 +29,6 @@ to_string _ = ""
 type Subs = [(ASTNode, ASTNode)]
 type UnifyErr = String
 type UnifyRes = Either UnifyErr Subs
-
-contains::Eq a => a -> [a] -> Bool
-contains _ []    = False
-contains g (h:t) | g == h    = True
-                 | otherwise = contains g t
 
 find_sub::ASTNode -> Subs -> ASTNode
 find_sub key subs = fromMaybe key (sub_lookup key subs) 
@@ -120,7 +116,16 @@ identity_substitution (Pred id ps) s = foldr (\p acc -> identity_substitution p 
 identity_substitution _ s = s
                                     
 
-compose_subs::Subs -> Subs -> Subs 
-compose_subs s1 s2 = map (\ (k,v) -> (k, substitute v s2)) s1                      
+isSubstituted::ASTNode -> Subs -> Bool
+isSubstituted _ []          = False
+isSubstituted key ((k,v):t) | key == k = True
+                            | otherwise = isSubstituted key t
 
+compose_subs::Subs -> Subs -> Subs 
+compose_subs s1 s2 = aux s s2 
+                     where
+                      s = map (\ (k,v) -> (k, substitute v s2)) s1                      
+                      aux s [] = s 
+                      aux s ((k,v):t) | isSubstituted k s = aux s t
+                                      | otherwise = (k,v) : aux s t
 

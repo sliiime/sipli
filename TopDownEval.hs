@@ -6,6 +6,7 @@ TDEvalResult(..)
 
 import Unifier 
 import Parser
+import Utils
 import SipliError
 
 -- Nukes are now legal
@@ -15,7 +16,6 @@ import SipliError
 data TDEvalSucc = TDSucc Subs Int 
 
 type TDEvalResult = Either TDEvalFail TDEvalSucc 
-
 
 var_lookup::ASTNode->[(ASTNode,ASTNode)]->Maybe ASTNode
 var_lookup _ [] = Nothing
@@ -47,7 +47,7 @@ rename_tail_vars (pred:preds) tag var_map id = (pred_1:preds_1, var_map_2, id_2)
 rename_vars::ASTNode -> String -> (ASTNode,Subs)
 rename_vars (Rule head tail) tag = (Rule head_1 tail_1, var_map_1)
                                    where 
-                                    (head_1, var_map, id_1)     = rename_atom_vars head tag [] 0
+                                    (head_1, var_map, id_1)   = rename_atom_vars head tag [] 0
                                     (tail_1, var_map_1, id_2) = rename_tail_vars tail tag var_map id_1
 
 rename_vars pred tag = (pred_1, var_map) 
@@ -68,13 +68,13 @@ try_tail (p:preds) s id_cntr rules = case top_down_evaluation_aux p_1 (id_cntr+1
 try_rules::ASTNode -> [ASTNode] -> Int -> ASTNode -> TDEvalResult
 try_rules goal [] _ _                 = Left (TDFail ("Can't unify : " ++ show goal ++ " with any rules"))
 try_rules goal (d:defs) id_cntr rules = case unify goal head_1 [] of  
-                                          Left _  -> try_rules goal defs id_cntr rules
+                                          Left _    -> try_rules goal defs id_cntr rules
                                           Right tmp -> case try_tail tail_1 tmp id_cntr rules of 
-                                            Left _  -> try_rules goal defs id_cntr rules
-                                            Right s_1 -> return s_1
+                                                        Left _    -> try_rules goal defs id_cntr rules
+                                                        Right s_1 -> return s_1
 
                                         where 
-                                        (Rule head_1 tail_1, var_map) = rename_vars d ("_" ++ show id_cntr ++ "_")   
+                                          (Rule head_1 tail_1, var_map) = rename_vars d ("_" ++ show id_cntr ++ "_")   
                                         
 
 top_down_evaluation_aux::ASTNode -> Int -> ASTNode-> TDEvalResult
@@ -85,9 +85,8 @@ top_down_evaluation_aux goal id_cntr (RuleList rules) = try_rules goal rule_defs
 top_down_evaluation::ASTNode -> ASTNode -> TDEvalResult
 top_down_evaluation goal rules = case top_down_evaluation_aux goal 0 rules of 
                                  Left err -> Left err
-                                 Right (TDSucc s i) -> return (TDSucc (compose_subs id_sub s) i)
-                                 where 
-                                  id_sub = identity_substitution goal []
-
+                                 Right (TDSucc s i) -> return (TDSucc (filter (\ (k,v) -> contains k vars) s) i)
+                                 where
+                                  vars = vars_of goal
 
 
