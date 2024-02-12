@@ -3,6 +3,7 @@ import System.Directory
 import Lexer
 import Parser
 import Unifier
+import TopDownEval
 import SipliError
 
 {-# ANN module ("hlint: ignore Use camelCase") #-}
@@ -113,14 +114,23 @@ execute_cmd (Unify (p1:p2:t)) ctx  = case unify p1 p2 [] of
                                                       print_subs subs
                                                       return ctx
 
-execute_cmd (TDQuery query) ctx = do 
-                                    print query
-                                    return ctx
+execute_cmd (TDQuery query) ctx = case top_down_evaluation goal rules of 
+                                    Left err              -> do
+                                                              print err
+                                                              return ctx
+
+                                    Right (TDSucc subs _) -> do
+                                                              print subs
+                                                              return ctx
+                                  where 
+                                    (goal:_) = query
+                                    (Ctx rules) = ctx                                    
 
 execute_cmd (Undefined msg) ctx = do 
-                                 putStrLn msg 
-                                 return ctx 
-
+                                    print msg
+                                    return ctx
+                                    
+                                 
 execute_cmd Exit _ = return EOC
 
 sipli::Context->IO ()

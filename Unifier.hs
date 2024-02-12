@@ -3,6 +3,7 @@ module Unifier (
   same_pred,
   substitute,
   print_subs,
+  identity_substitution,
   compose_subs,
   Subs(..),
   UnifyErr(..),
@@ -28,6 +29,10 @@ type Subs = [(ASTNode, ASTNode)]
 type UnifyErr = String
 type UnifyRes = Either UnifyErr Subs
 
+contains::Eq a => a -> [a] -> Bool
+contains _ []    = False
+contains g (h:t) | g == h    = True
+                 | otherwise = contains g t
 
 find_sub::ASTNode -> Subs -> ASTNode
 find_sub key subs = fromMaybe key (sub_lookup key subs) 
@@ -105,6 +110,15 @@ unify_all (l:ls) (r:rs) s = do
                               s_1 <- unify l r s
                               unify_all ls rs s_1
 
+
+
+identity_substitution::ASTNode -> Subs -> Subs
+identity_substitution (Var x) s | contains (Var x, Var x) s = s 
+                                | otherwise                 = (Var x, Var x) : s
+identity_substitution (Num n) s = s
+identity_substitution (Pred id ps) s = foldr (\p acc -> identity_substitution p acc) s ps 
+identity_substitution _ s = s
+                                    
 
 compose_subs::Subs -> Subs -> Subs 
 compose_subs s1 s2 = map (\ (k,v) -> (k, substitute v s2)) s1                      
