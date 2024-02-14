@@ -1,21 +1,17 @@
-module TopDownEval (
-top_down_evaluation,
-TDEvalSucc(..),
-TDEvalResult(..)
-) where
+module TopDownEval 
+where 
 
-import Unifier 
-import Parser
-import Utils
+import Unifier
 import SipliError
-
--- Nukes are now legal
+import Utils
+import Parser
 
 {-# ANN module ("hlint: ignore Use camelCase") #-}
-
-data TDEvalSucc = TDSucc Subs Int 
-
+--                  goal     clause     goals     vars 
+type TDEvalNode = (ASTNode, [ASTNode], [ASTNode], Subs)
+type TDStack = [TDEvalNode]
 type TDEvalResult = Either TDEvalFail TDEvalSucc 
+data TDEvalSucc = TDSucc Subs
 
 var_lookup::ASTNode->[(ASTNode,ASTNode)]->Maybe ASTNode
 var_lookup _ [] = Nothing
@@ -52,41 +48,46 @@ rename_vars (Rule head tail) tag = (Rule head_1 tail_1, var_map_1)
 
 rename_vars pred tag = (pred_1, var_map) 
                          where 
-                          (pred_1, var_map, _) = rename_atom_vars pred tag [] 0  
+                          (pred_1, var_map, _) = rename_atom_vars pred tag [] 0
 
-try_tail::[ASTNode] -> Subs -> Int -> ASTNode -> TDEvalResult
-try_tail [] s id_cntr _                  = return (TDSucc s id_cntr) 
+unify_batch::ASTNode ->[ASTNode] -> String -> [(Subs, ASTNode)] 
+unify_batch goal [] tag = []
+unify_batch goal (r:rules) tag = case unify goal head_1 [] of 
+                              Left _  -> unify_batch goal rules tag
+                              Right s -> (s, Rule (head_1 `substitute` s) tail_1) : unify_batch goal rules tag
+                             where 
+                              (Rule head_1 tail_1, _ ) = rename_vars r tag
 
-try_tail (p:preds) s id_cntr rules = case top_down_evaluation_aux p_1 (id_cntr+1) rules of 
-                                       Left fail                    -> Left fail 
-                                       Right (TDSucc s_1 id_cntr_1) -> try_tail preds s_2 id_cntr_1 rules
-                                        where 
-                                          s_2 = compose_subs s s_1
-                                     where 
-                                      p_1 = p `substitute` s
+backtrack::TDStack -> ASTNode -> Int -> TDEvalResult
+backtrack [] _  _               = Left (TDFail "No.")
+backtrack (s:ss) rules state_id = top_down_eval gs ss sub rules state_id 
+                                  where
+                                    (g, tail, gs_tmp, sub) = s
+                                    gs = tail ++ gs_tmp
 
-try_rules::ASTNode -> [ASTNode] -> Int -> ASTNode -> TDEvalResult
-try_rules goal [] _ _                 = Left (TDFail ("Can't unify : " ++ show goal ++ " with any rules"))
-try_rules goal (d:defs) id_cntr rules = case unify goal head_1 [] of  
-                                          Left _    -> try_rules goal defs id_cntr rules
-                                          Right tmp -> case try_tail tail_1 tmp id_cntr rules of 
-                                                        Left _    -> try_rules goal defs id_cntr rules
-                                                        Right s_1 -> return s_1
+top_down_eval::[ASTNode] -> TDStack -> Subs -> ASTNode -> Int -> TDEvalResult
+top_down_eval [] _ sub _ _ = return (TDSucc sub) 
+top_down_eval (g:gs) ss sub rules state_id = case unify_batch g_1 rule_list tag of
+                                              []          -> backtrack ss rules (state_id+1)
+                                              (m:matches) -> top_down_eval gs_1 ss_1 sub_1 rules (state_id+1)
+                                                where
+                                                  (sub_tmp, Rule head tail) = m
+                                                  gs_1  = tail ++ gs
+                                                  sub_1 = compose_subs sub sub_tmp 
+                                                  w     = map (\(u, Rule h ps) -> (substitute h u, ps, gs, compose_subs sub u)) matches
+                                                  ss_1  = w ++ ss
+                                             where 
+                                              (RuleList rule_list) = rules
+                                              g_1                  = substitute g sub
+                                              tag                  = "_" ++ show state_id ++ "_"
 
-                                        where 
-                                          (Rule head_1 tail_1, var_map) = rename_vars d ("_" ++ show id_cntr ++ "_")   
-                                        
 
-top_down_evaluation_aux::ASTNode -> Int -> ASTNode-> TDEvalResult
-top_down_evaluation_aux goal id_cntr (RuleList rules) = try_rules goal rule_defs id_cntr (RuleList rules)
-                                                        where 
-                                                          rule_defs = filter (\(Rule head _) -> head `same_pred` goal) rules
-
-top_down_evaluation::ASTNode -> ASTNode -> TDEvalResult
-top_down_evaluation goal rules = case top_down_evaluation_aux goal 0 rules of 
-                                   Left err -> Left err
-                                   Right (TDSucc s i) -> return (TDSucc (filter (\ (k,v) -> contains k vars) s) i)
-                                 where
-                                  vars = vars_of goal
-
+top_down_evaluation::ASTNode->ASTNode->TDEvalResult
+top_down_evaluation query rules = case top_down_eval [query] [] [] rules 0 of 
+                                    Left err -> Left err
+                                    Right (TDSucc s) -> Right (TDSucc s_1)
+                                      where 
+                                        s_1 = filter (\ (k,v) -> contains k vars) s
+                                  where 
+                                    vars  = vars_of query
 

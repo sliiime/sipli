@@ -3,7 +3,7 @@ import System.Directory
 import Lexer
 import Parser
 import Unifier
-import TopDownEval_
+import TopDownEval
 import SipliError
 
 {-# ANN module ("hlint: ignore Use camelCase") #-}
