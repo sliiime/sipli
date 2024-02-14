@@ -3,7 +3,7 @@ import System.Directory
 import Lexer
 import Parser
 import Unifier
-import TopDownEval
+import TopDownEval_
 import SipliError
 
 {-# ANN module ("hlint: ignore Use camelCase") #-}
@@ -119,7 +119,7 @@ execute_cmd (TDQuery query) ctx = case top_down_evaluation goal rules of
                                                               print err
                                                               return ctx
 
-                                    Right (TDSucc subs _) -> do
+                                    Right (TDSucc subs) -> do
                                                               print subs
                                                               return ctx
                                   where 

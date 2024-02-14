@@ -107,7 +107,6 @@ unify_all (l:ls) (r:rs) s = do
                               unify_all ls rs s_1
 
 
-
 identity_substitution::ASTNode -> Subs -> Subs
 identity_substitution (Var x) s | contains (Var x, Var x) s = s 
                                 | otherwise                 = (Var x, Var x) : s

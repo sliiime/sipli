@@ -5,4 +5,4 @@ add(s(X),Y,Z) :- add(X,s(Y),Z).
 sub(X,Y,Z) :- add(Y,Z,X).
 
 mul(0,X,0).
-mul(s(X),Y,Z) :- mul(X,Y,Z1), add(Y,Z1,Z).
+mul(s(X),Y,Z) :- add(Y,Z1,Z), mul(Y,X,Z1).

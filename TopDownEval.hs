@@ -84,8 +84,8 @@ top_down_evaluation_aux goal id_cntr (RuleList rules) = try_rules goal rule_defs
 
 top_down_evaluation::ASTNode -> ASTNode -> TDEvalResult
 top_down_evaluation goal rules = case top_down_evaluation_aux goal 0 rules of 
-                                 Left err -> Left err
-                                 Right (TDSucc s i) -> return (TDSucc (filter (\ (k,v) -> contains k vars) s) i)
+                                   Left err -> Left err
+                                   Right (TDSucc s i) -> return (TDSucc (filter (\ (k,v) -> contains k vars) s) i)
                                  where
                                   vars = vars_of goal
 
