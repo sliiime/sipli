@@ -56,15 +56,6 @@ parse_command input = case x of
                       x = words input
                       
 
-
-print_tokens::Either [Token] LexErr -> IO ()
-print_tokens (Left (t:ts)) = do
-                                print t
-                                print_tokens (Left ts)
-
-print_tokens (Right err) = print err
-print_tokens (Left []) = print '\n'
-
 strings_to_atoms::[String]-> Either SipliError [ASTNode]
 strings_to_atoms [] = Right []
 strings_to_atoms (s:ss) = do
@@ -72,13 +63,6 @@ strings_to_atoms (s:ss) = do
                       ([],atom) <- sip (parse_pred tokens)
                       atoms     <- strings_to_atoms ss
                       return (atom:atoms)
-
-print_recursively::(Show a) => [a] -> Context -> IO Context
-print_recursively [] ctx = return ctx
-print_recursively (a:as) ctx = do 
-                            print a 
-                            print_recursively as ctx
-
 
 add_to_context::ASTNode -> Context -> Context
 add_to_context rules  Empty = Ctx rules
@@ -120,7 +104,7 @@ execute_cmd (TDQuery query) ctx = case top_down_evaluation goal rules of
                                                               return ctx
 
                                     Right (TDSucc subs) -> do
-                                                              print subs
+                                                              print_subs subs
                                                               return ctx
                                   where 
                                     (goal:_) = query

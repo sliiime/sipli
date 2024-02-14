@@ -4,6 +4,7 @@ module Parser (
   parse_pred_list,
   parse_program,
   contains_var,
+  show_pretty,
   parse_pred,
   same_pred,
   isConst,
@@ -85,6 +86,13 @@ vars_of (Num _ ) = []
 vars_of (Var id) = [Var id]
 vars_of (Pred _ ps ) = foldr (\ p acc -> vars_of p ++ acc) [] ps
 
+show_pretty::ASTNode -> String
+show_pretty (Var x) = x
+show_pretty (Num x) = show x
+show_pretty (Pred id []  ) = id
+show_pretty (Pred id (p:ps) ) = id ++ "(" ++ show_pretty p ++ input ++ ")"
+                              where 
+                                input = foldr (\x acc -> "," ++ show_pretty x ++ acc) [] ps
 
 -- Parser --
 

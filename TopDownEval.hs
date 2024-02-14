@@ -8,7 +8,7 @@ import Parser
 
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 --                  goal     clause     goals     vars 
-type TDEvalNode = (ASTNode, [ASTNode], [ASTNode], Subs)
+type TDEvalNode = ([ASTNode], Subs)
 type TDStack = [TDEvalNode]
 type TDEvalResult = Either TDEvalFail TDEvalSucc 
 data TDEvalSucc = TDSucc Subs
@@ -62,8 +62,7 @@ backtrack::TDStack -> ASTNode -> Int -> TDEvalResult
 backtrack [] _  _               = Left (TDFail "No.")
 backtrack (s:ss) rules state_id = top_down_eval gs ss sub rules state_id 
                                   where
-                                    (g, tail, gs_tmp, sub) = s
-                                    gs = tail ++ gs_tmp
+                                    (gs, sub) = s
 
 top_down_eval::[ASTNode] -> TDStack -> Subs -> ASTNode -> Int -> TDEvalResult
 top_down_eval [] _ sub _ _ = return (TDSucc sub) 
@@ -74,8 +73,9 @@ top_down_eval (g:gs) ss sub rules state_id = case unify_batch g_1 rule_list tag 
                                                   (sub_tmp, Rule head tail) = m
                                                   gs_1  = tail ++ gs
                                                   sub_1 = compose_subs sub sub_tmp 
-                                                  w     = map (\(u, Rule h ps) -> (substitute h u, ps, gs, compose_subs sub u)) matches
+                                                  w     = map (\(u, Rule h ps) -> (ps ++ gs, compose_subs sub u)) matches
                                                   ss_1  = w ++ ss
+
                                              where 
                                               (RuleList rule_list) = rules
                                               g_1                  = substitute g sub

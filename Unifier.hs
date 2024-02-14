@@ -19,8 +19,8 @@ import Utils
 
 print_subs::Subs -> IO ()
 print_subs [] = return ()
-print_subs (vs:t) = do
-                      print vs 
+print_subs ((k,v):t) = do
+                      print (show_pretty k ++ " / " ++ show_pretty v)
                       print_subs t
                         
 to_string::ASTNode -> String
