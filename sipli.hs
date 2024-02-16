@@ -108,7 +108,7 @@ execute_cmd (Unify (p1:p2:t)) ctx  = case unify p1 p2 [] of
                                                       print_subs subs
                                                       return ctx
 
-execute_cmd (TDQuery query) ctx = case top_down_evaluation goal rules of 
+execute_cmd (TDQuery query) ctx = case top_down_evaluation query rules of 
                                     Left err               -> do
                                                                 print err
                                                                 return ctx
@@ -118,9 +118,8 @@ execute_cmd (TDQuery query) ctx = case top_down_evaluation goal rules of
                                                                         backtrack_decision ss rules state_id query_vars
                                                                         return ctx
                                                                        where
-                                                                        query_vars = vars_of goal
+                                                                        query_vars = foldr (\x acc -> vars_of x ++ acc) [] query
                                   where 
-                                    (goal:_) = query
                                     (Ctx rules) = ctx                                    
 
 execute_cmd (Undefined msg) ctx = do 

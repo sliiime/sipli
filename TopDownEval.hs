@@ -82,12 +82,12 @@ top_down_eval (g:gs) ss sub rules state_id = case unify_batch g_1 rule_list tag 
                                               tag                  = "_" ++ show state_id ++ "_"
 
 
-top_down_evaluation::ASTNode->ASTNode->TDEvalResult
-top_down_evaluation query rules = case top_down_eval [query] [] [] rules 0 of 
+top_down_evaluation::[ASTNode]->ASTNode->TDEvalResult
+top_down_evaluation query rules = case top_down_eval query [] [] rules 0 of 
                                     Left err -> Left err
                                     Right (TDSucc s ss state_id) -> Right (TDSucc s_1 ss state_id)
                                       where 
                                         s_1 = filter (\ (k,v) -> contains k vars) s
                                   where 
-                                    vars  = vars_of query
+                                    vars  = foldr (\x acc -> vars_of x ++ acc) [] query
 
