@@ -15,12 +15,6 @@ sip::(SipliErrorIF a) => Either a b -> Either SipliError b
 sip (Left e)  = Left (return_error e)
 sip (Right v) = Right v   
 
-print_list::Show a => [a] -> IO ()
-print_list [] = return ()
-print_list (a:as) = do
-                      print a
-                      print_list as
-
 read_pred_list::String->Either SipliError ASTNode
 read_pred_list input = do
                         tokens         <- sip (tokenize input 0 0)
@@ -91,9 +85,9 @@ execute_cmd (Filename filename) ctx = do
                                         Right rules -> return $ add_to_context rules ctx
 
 execute_cmd (Unify (p1:p2:t)) ctx  = case unify p1 p2 [] of 
-                                      Left err -> do
-                                                    print err
-                                                    return ctx
+                                      Left err   -> do
+                                                      print err
+                                                      return ctx
                                       Right subs -> do 
                                                       print_subs subs
                                                       return ctx
