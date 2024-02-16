@@ -8,8 +8,11 @@ import SipliError
 
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
-data Cmd = Filename String | Unify [ASTNode] | TDQuery [ASTNode] | None | Exit | Undefined String deriving (Show) 
+data Cmd = Filename String | Unify [ASTNode] | TDQuery [ASTNode] | None | Exit deriving (Show) 
 data Context = Ctx ASTNode | Empty | EOC 
+
+unexpected_input::String
+unexpected_input = "Unexpected character sequence"
 
 sip::(SipliErrorIF a) => Either a b -> Either SipliError b
 sip (Left e)  = Left (return_error e)
@@ -35,6 +38,8 @@ backtrack_decision ss rules state_id query_vars = case ss of
                                                                                                    where 
                                                                                                     subs_1 = subs_of subs query_vars
                                                     "." -> return ()
+                                                    
+                                                    _   -> print unexpected_input
 
 
 parse_command::String->IO Cmd
@@ -60,7 +65,9 @@ parse_command input = case x of
                                         input = concat query_s
                                       
 
-                    _ -> return (Undefined "Undefined control sequence")
+                    _ -> do 
+                          print unexpected_input 
+                          return None
 
                     where 
                       x = words input
@@ -122,10 +129,7 @@ execute_cmd (TDQuery query) ctx = case top_down_evaluation query rules of
                                   where 
                                     (Ctx rules) = ctx                                    
 
-execute_cmd (Undefined msg) ctx = do 
-                                    print msg
-                                    return ctx
-                                    
+execute_cmd None ctx = return ctx                                    
                                  
 execute_cmd Exit _ = return EOC
 

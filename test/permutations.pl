@@ -1,3 +1,6 @@
+perm(empty,empty).
+perm(l(H,T), l(X,T1)) :- delete(l(H,T), X, L), perm(L,T1).
+
 size(empty,0).
 size(l(H,T),s(S)) :- size(T,S).
 
