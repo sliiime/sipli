@@ -21,6 +21,22 @@ read_pred_list input = do
                         (_, pred_list) <- sip (parse_pred_list tokens)
                         return pred_list
 
+backtrack_decision::TDStack->ASTNode->Int->[ASTNode]->IO ()
+backtrack_decision ss rules state_id query_vars = case ss of 
+                                        []  -> return ()
+                                        _   ->  do
+                                                  tryBt <- getLine
+                                                  case tryBt of 
+                                                    ";" -> case backtrack ss rules state_id of 
+                                                            Left  (TDFail msg) -> print msg
+                                                            Right (TDSucc subs ss_1 state_id_1) -> do
+                                                                                                    print_subs subs_1
+                                                                                                    backtrack_decision ss_1 rules state_id_1 query_vars 
+                                                                                                   where 
+                                                                                                    subs_1 = subs_of subs query_vars
+                                                    "." -> return ()
+
+
 parse_command::String->IO Cmd
 parse_command ":q" = return Exit 
 parse_command input = case x of 
@@ -93,13 +109,16 @@ execute_cmd (Unify (p1:p2:t)) ctx  = case unify p1 p2 [] of
                                                       return ctx
 
 execute_cmd (TDQuery query) ctx = case top_down_evaluation goal rules of 
-                                    Left err              -> do
-                                                              print err
-                                                              return ctx
+                                    Left err               -> do
+                                                                print err
+                                                                return ctx
 
-                                    Right (TDSucc subs) -> do
-                                                              print_subs subs
-                                                              return ctx
+                                    Right (TDSucc subs ss state_id) -> do
+                                                                        print_subs subs
+                                                                        backtrack_decision ss rules state_id query_vars
+                                                                        return ctx
+                                                                       where
+                                                                        query_vars = vars_of goal
                                   where 
                                     (goal:_) = query
                                     (Ctx rules) = ctx                                    
@@ -113,6 +132,7 @@ execute_cmd Exit _ = return EOC
 
 sipli::Context->IO ()
 sipli EOC = return ()
+
 
 sipli ctx = do
               input <- getLine

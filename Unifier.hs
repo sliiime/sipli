@@ -1,6 +1,7 @@
 module Unifier (
   unify,
   same_pred,
+  subs_of,
   substitute,
   print_subs,
   identity_substitution,
@@ -40,6 +41,9 @@ find_sub key subs = fromMaybe key (sub_lookup key subs)
 arity_error::Either String a
 arity_error = Left "Cannot unify predicates with different arity"
 
+subs_of::Subs->[ASTNode]->Subs
+subs_of s vs = filter (\ (k,_) ->  contains k vs) s
+
 arity::ASTNode -> Int
 arity (Pred id params) = length params
 -- Maybe should throw exception?!
@@ -53,6 +57,7 @@ substitution_error::ASTNode -> ASTNode -> Either UnifyErr a
 substitution_error _ _ = Left "Substitution error"
 
 produce_substitution::ASTNode -> ASTNode -> Subs -> Subs
+
 produce_substitution target with []        = [(target,with)]
 produce_substitution target with ((k,v):t) | target == with = (k,v):t
                                  | otherwise = (k,v_1) : produce_substitution target with t

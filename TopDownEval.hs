@@ -11,7 +11,7 @@ import Parser
 type TDEvalNode = ([ASTNode], Subs)
 type TDStack = [TDEvalNode]
 type TDEvalResult = Either TDEvalFail TDEvalSucc 
-data TDEvalSucc = TDSucc Subs
+data TDEvalSucc = TDSucc Subs TDStack Int
 
 var_lookup::ASTNode->[(ASTNode,ASTNode)]->Maybe ASTNode
 var_lookup _ [] = Nothing
@@ -65,7 +65,7 @@ backtrack (s:ss) rules state_id = top_down_eval gs ss sub rules state_id
                                     (gs, sub) = s
 
 top_down_eval::[ASTNode] -> TDStack -> Subs -> ASTNode -> Int -> TDEvalResult
-top_down_eval [] _ sub _ _ = return (TDSucc sub) 
+top_down_eval [] ss sub _ state_id = return (TDSucc sub ss state_id) 
 top_down_eval (g:gs) ss sub rules state_id = case unify_batch g_1 rule_list tag of
                                               []          -> backtrack ss rules (state_id+1)
                                               (m:matches) -> top_down_eval gs_1 ss_1 sub_1 rules (state_id+1)
@@ -85,7 +85,7 @@ top_down_eval (g:gs) ss sub rules state_id = case unify_batch g_1 rule_list tag 
 top_down_evaluation::ASTNode->ASTNode->TDEvalResult
 top_down_evaluation query rules = case top_down_eval [query] [] [] rules 0 of 
                                     Left err -> Left err
-                                    Right (TDSucc s) -> Right (TDSucc s_1)
+                                    Right (TDSucc s ss state_id) -> Right (TDSucc s_1 ss state_id)
                                       where 
                                         s_1 = filter (\ (k,v) -> contains k vars) s
                                   where 
