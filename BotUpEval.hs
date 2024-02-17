@@ -21,12 +21,13 @@ try_matches g (m:ms) gs facts s id = case unify g m_1 [] of
                                           s_1 = compose_subs s tmp
                                      where
                                       tag = "_" ++ show id ++ "_"
-                                      (m_1,_) = rename_vars g tag
+                                      (m_1,_) = rename_vars m tag
 
                                                     
 
-evaluate::[ASTNode]->[ASTNode]->Subs->Int->[Subs]
-evaluate   []     _   s _  = [s]
+evaluate::[ASTNode] -> [ASTNode] -> Subs -> Int -> [Subs]
+evaluate   []    _   [] _  = []
+evaluate   []    _   s  _  = [s]
 evaluate (g:gs) facts s id = try_matches g_1 matches gs facts s id
                              where
                               matches = filter (g `same_pred`) facts
@@ -55,8 +56,8 @@ explore facts (r:rs) = case (hint, facts_1) of
                  
 
 bottom_up_evaluation::[ASTNode]->ASTNode->Int->[ASTNode]
-bottom_up_evaluation facts rules  0   = facts
-bottom_up_evaluation facts rules left = case explore facts rule_list of
+bottom_up_evaluation facts rules  (-1)   = facts
+bottom_up_evaluation facts rules left    = case explore facts rule_list of
                                           (CONT, facts_1) -> bottom_up_evaluation facts_1 rules (left-1)
                                           (STOP, facts_1) -> facts_1
                                         where 

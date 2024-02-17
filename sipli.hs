@@ -6,10 +6,12 @@ import Unifier
 import TopDownEval
 import BotUpEval
 import SipliError
+import Utils
+import Data.Maybe
 
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
-data Cmd = Filename String | Unify [ASTNode] | TDQuery [ASTNode] | BottomUp Int | None | Exit deriving (Show) 
+data Cmd = Filename String | Unify [ASTNode] | TDQuery [ASTNode] | BottomUp (Maybe Int) | None | Exit deriving (Show) 
 data Context = Ctx ASTNode | EOC 
 
 unexpected_input::String
@@ -63,7 +65,7 @@ parse_command input = case x of
                                         query = read_pred_list input
                                         input = concat query_s
 
-                    ("v^":[rounds]) -> return (BottomUp (read rounds))
+                    ["v^", rounds] -> return (BottomUp (isNatural rounds))
 
                     _ -> do 
                           print unexpected_input 
@@ -129,11 +131,12 @@ execute_cmd (TDQuery query) ctx = case top_down_evaluation query rules of
                                     (Ctx rules) = ctx                                    
 
 execute_cmd (BottomUp rounds) ctx = do 
-                                      print infered
+                                      print_list infered show_pretty 
                                       return ctx
                                     where
                                      Ctx rules = ctx
-                                     infered = bottom_up_evaluation [] rules rounds
+                                     mode = fromMaybe (-2) rounds 
+                                     infered = bottom_up_evaluation [] rules mode 
 execute_cmd None ctx = return ctx                                    
                                  
 execute_cmd Exit _ = return EOC
