@@ -4,12 +4,13 @@ import Lexer
 import Parser
 import Unifier
 import TopDownEval
+import BotUpEval
 import SipliError
 
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
-data Cmd = Filename String | Unify [ASTNode] | TDQuery [ASTNode] | None | Exit deriving (Show) 
-data Context = Ctx ASTNode | Empty | EOC 
+data Cmd = Filename String | Unify [ASTNode] | TDQuery [ASTNode] | BottomUp Int | None | Exit deriving (Show) 
+data Context = Ctx ASTNode | EOC 
 
 unexpected_input::String
 unexpected_input = "Unexpected character sequence"
@@ -58,12 +59,11 @@ parse_command input = case x of
                                                       return None
                                                       
                                         Right (PredList query) -> return (TDQuery query)
-
                                       where 
-
                                         query = read_pred_list input
                                         input = concat query_s
-                                      
+
+                    ("v^":[rounds]) -> return (BottomUp (read rounds))
 
                     _ -> do 
                           print unexpected_input 
@@ -82,7 +82,6 @@ strings_to_atoms (s:ss) = do
                       return (atom:atoms)
 
 add_to_context::ASTNode -> Context -> Context
-add_to_context rules  Empty = Ctx rules
 add_to_context (RuleList new_rules) (Ctx (RuleList all_rules)) = Ctx (RuleList(all_rules ++ new_rules))
 
 load_file::String -> Either SipliError ASTNode
@@ -129,6 +128,12 @@ execute_cmd (TDQuery query) ctx = case top_down_evaluation query rules of
                                   where 
                                     (Ctx rules) = ctx                                    
 
+execute_cmd (BottomUp rounds) ctx = do 
+                                      print infered
+                                      return ctx
+                                    where
+                                     Ctx rules = ctx
+                                     infered = bottom_up_evaluation [] rules rounds
 execute_cmd None ctx = return ctx                                    
                                  
 execute_cmd Exit _ = return EOC
@@ -144,5 +149,5 @@ sipli ctx = do
               sipli ctx_1
               return ()
 
-main = sipli Empty 
+main = sipli (Ctx (RuleList []))
 

@@ -6,6 +6,7 @@ module Unifier (
   print_subs,
   identity_substitution,
   compose_subs,
+  rename_vars,
   Subs(..),
   UnifyErr(..),
   UnifyRes(..)
@@ -17,7 +18,43 @@ import Utils
 
 {-# ANN module ("hlint: ignore Use camelCase") #-}
 
+var_lookup::ASTNode->[(ASTNode,ASTNode)]->Maybe ASTNode
+var_lookup _ [] = Nothing
+var_lookup x ((k,v):var_map) | x == k = Just v 
+                             | otherwise = var_lookup x var_map
 
+rename_atom_vars::ASTNode -> String -> [(ASTNode, ASTNode)] -> Int -> (ASTNode, [(ASTNode, ASTNode)], Int)
+rename_atom_vars (Var x) tag var_map i = case var_lookup (Var x) var_map of 
+                                            Nothing -> (x_1, (Var x, x_1) : var_map, i+1)
+                                            Just y  -> (y, var_map, i)
+                                            where 
+                                              x_1 = Var (tag ++ show i)
+
+rename_atom_vars (Pred id []) tag var_map i = (Pred id [], var_map, i)
+rename_atom_vars (Pred id (p:ps)) tag var_map i = (Pred id (p_1:ps_1), var_map_2, i_2) 
+                                                    where 
+                                                      (p_1, var_map_1, i_1) = rename_atom_vars p tag var_map i
+                                                      (Pred _ ps_1, var_map_2, i_2) = rename_atom_vars (Pred id ps) tag var_map_1 i_1
+rename_atom_vars x _ var_map i = (x, var_map, i)
+
+
+rename_tail_vars::[ASTNode] -> String -> Subs -> Int -> ([ASTNode], Subs, Int)
+rename_tail_vars [] _ var_map id = ([], var_map, id)
+rename_tail_vars (pred:preds) tag var_map id = (pred_1:preds_1, var_map_2, id_2)  
+                                               where 
+                                                (pred_1, var_map_2, id_2) = rename_atom_vars pred tag var_map_1 id_1
+                                                (preds_1, var_map_1, id_1) = rename_tail_vars preds tag var_map id
+
+rename_vars::ASTNode -> String -> (ASTNode,Subs)
+rename_vars (Rule head tail) tag = (Rule head_1 tail_1, var_map_1)
+                                   where 
+                                    (head_1, var_map, id_1)   = rename_atom_vars head tag [] 0
+                                    (tail_1, var_map_1, id_2) = rename_tail_vars tail tag var_map id_1
+
+rename_vars pred tag = (pred_1, var_map) 
+                         where 
+                          (pred_1, var_map, _) = rename_atom_vars pred tag [] 0
+                          
 print_subs::Subs -> IO ()
 print_subs [] = return ()
 print_subs ((k,v):t) = do
