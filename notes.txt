@@ -1,0 +1,5 @@
+1. Hold multiple files in one context.
+2. Top Down evaluation backtracking.
+3. Bottom up Evaluation.
+4. Multiple predicates in one query.
+5. Bad commands should not crash the interpreter.
