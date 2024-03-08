@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [ ! -d ./build]; then 
-  mkdir ./build
+if [ ! -d "./build" ]; then 
+  mkdir "./build"
 fi
 
-ghc --make -o ./build/sipli sipli.hs -odir build -hidir build
+ghc -isrc --make -o ./sipli ./src/sipli.hs -odir build -hidir build
