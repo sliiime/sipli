@@ -1,7 +1,7 @@
-Project2023-2024.pdf
+./Project2023-2024.pdf
 /build
 ./sipli
 ./pack.sh
 ./notes.txt
-*.zip
+./*.zip
 

@@ -130,11 +130,12 @@ unify a1 a2 s | isConst f1 && isConst f2 = if f1 == f2
                 where 
                   f1 = substitute a1 s
                   f2 = substitute a2 s
+                  -- lazy eval saves the day 
                   (Pred _ p1) = f1 
                   (Pred _ p2) = f2
 
 substitute::ASTNode -> Subs -> ASTNode 
-substitute (Pred id []) _ = Pred id []
+substitute (Pred id []) _ = Pred id [] -- ?
 substitute (Pred id ps) s = Pred id (map  (`substitute` s) ps)
 substitute (Var x) s = find_sub (Var x) s 
 substitute x _ = x

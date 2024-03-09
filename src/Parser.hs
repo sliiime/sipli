@@ -79,7 +79,7 @@ contains_var (Pred _ ps) v = foldr (\x acc -> acc || aux v x) False ps
                                 aux _ (Pred _  []) = False
                                 aux v (Pred id ps) = Pred id ps `contains_var` v
                                 aux v w           = v == w
-_ `contains_var` _ = False
+_ `contains_var` _ = False -- ?
 
 vars_of::ASTNode -> [ASTNode]
 vars_of (Num _ ) = []
@@ -137,7 +137,7 @@ parse_rule_list tokens = do
 
 parse_rule::[Token]->ParseRes
 parse_rule tokens = do 
-                      (rest_1, pred)          <- parse_pred tokens
+                      (rest_1, pred)                   <- parse_pred tokens
                       (rest_2, PredList tail)          <- parse_rule_tail rest_1
                       return (rest_2, Rule pred tail)
 
