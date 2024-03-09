@@ -1,5 +1,5 @@
 Kostis Seiras
-115201800174
+1115201800174
 
   Si     p  l   i
 A Simple ProLog Interpreter
@@ -16,7 +16,7 @@ chmod +x build.sh
 -- Commands
 
 "load file" <PATH>    : Load rules of <PATH>.
-"?" <Query>           : Execute <Query> using Top Down evaluation.
+"?" <Query>           : Execute <Query> using Top Down evaluation. Queries should be '.' terminated.
 "v^" <Query> <N>      : Execute <Query> using Bottom Up evaluation. <N> is an optional argument, the interpreter will output the results of the first N evaluation rounds.
 "unify" <Term> <Term> : Try to unify the given terms.
 ":q"                  : Exit the interpreter.
