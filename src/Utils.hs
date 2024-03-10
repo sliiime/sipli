@@ -27,6 +27,6 @@ isNatural cs  = isNatural_aux cs 0
                where
                 isNatural_aux []     acc = return acc
                 isNatural_aux (c:cs) acc = if isDigit c 
-                                            then isNatural_aux cs (fromEnum c + 10*acc)
+                                            then isNatural_aux cs (fromEnum c - fromEnum '0' + 10*acc)
                                             else Nothing
 

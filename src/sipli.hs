@@ -65,7 +65,9 @@ parse_command input = case x of
                                         query = read_pred_list input
                                         input = concat query_s
 
-                    ["v^", rounds] -> return (BottomUp (isNatural rounds))
+                    "v^":tail ->  case tail of 
+                                      rounds:_ -> return (BottomUp (isNatural rounds))
+                                      []       -> return (BottomUp Nothing)
 
                     _ -> do 
                           print unexpected_input 
